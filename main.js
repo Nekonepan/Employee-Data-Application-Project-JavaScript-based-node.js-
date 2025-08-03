@@ -21,21 +21,20 @@ for (let i = 0; i < baris.length; i++) {
 
 // TAMPILKAN DATA =================================================================================
 function tampilkan_data() {
-  console.log("\n========== DATA KARYAWAN ==========");
+  console.log("========== DATA KARYAWAN ==========");
 
   if (data.length === 0) {
     console.log("Data masih kosong !");
   } else {
     console.log("Jumlah Data : ", data.length);
     console.table(data);
-    console.log("\n");
   }
 }
 // ================================================================================================
 
 // TAMBAH DATA BARU ===============================================================================
 async function tambah_data() {
-  console.log("\n========== TAMBAH DATA KARYAWAN ==========");
+  console.log("========== TAMBAH DATA KARYAWAN ==========");
 
   const hasil = await inquirer.prompt([
     { name: "ID", message: "Masukkan ID : " },
@@ -78,14 +77,87 @@ async function tambah_data() {
       .join("\n") + "\n";
 
   fs.writeFileSync("data-karyawan.txt", write_data);
-  console.log("========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN ==========\n");
+  console.log("========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN ==========");
   // ---------------------------------------------------------------------------
+}
+// ================================================================================================
+
+// CARI KARYAWAN BERDASARKAN ID ===================================================================
+async function search_by_id() {
+  const { cari_id } = await inquirer.prompt([
+    { name: "cari_id", message: "Masukkan ID yang ingin dicari : " },
+  ]);
+
+  const hasil = data.find(
+    (item) => item.ID.toLowerCase() === cari_id.trim().toLowerCase()
+  );
+  if (hasil) {
+    console.log("========== DATA DITEMUKAN =========");
+    console.log(`ID : "${cari_id}" ditemukan.`);
+    console.table([hasil]);
+  } else {
+    console.log(`Data dengan ID "${cari_id}" tidak ditemukan.`);
+  }
+}
+// ================================================================================================
+
+// CARI KARYAWAN BERDASARKAN NAMA =================================================================
+async function search_by_name() {
+  const { cari_nama } = await inquirer.prompt([
+    {
+      name: "cari_nama",
+      message: "Masukkan Nama (atau sebagian) yang ingin dicari : ",
+    },
+  ]);
+
+  const hasil = data.filter((item) =>
+    item.NAMA.toLowerCase().includes(cari_nama.trim().toLowerCase())
+  );
+
+  if (hasil.length > 0) {
+    console.log("========== DATA DITEMUKAN =========");
+    console.log(`Nama : "${cari_nama}" ditemukan.`);
+    console.table(hasil);
+  } else {
+    console.log(`Tidak ada data dengan nama : "${cari_nama}"`);
+  }
 }
 // ================================================================================================
 
 // CARI DATA KARYAWAN =============================================================================
 async function cari_data() {
-  console.log("Untuk Cari Data");
+  console.log("========= CARI DATA KARYAWAN =========");
+
+  const { methode } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "methode",
+      message: "Pilih metode pencarian : ",
+      choices: [
+        "Cari berdasarkan ID",
+        "Cari berdasarkan Nama",
+        "Kembali ke menu",
+      ],
+    },
+  ]);
+
+  switch (methode) {
+    case "Cari berdasarkan ID": {
+      console.log("\n");
+      await search_by_id();
+      console.log("\n");
+      break;
+    }
+    case "Cari berdasarkan Nama": {
+      console.log("\n");
+      await search_by_name();
+      console.log("\n");
+      break;
+    }
+    case "Kembali ke menu": {
+      return;
+    }
+  }
 }
 // ================================================================================================
 
@@ -106,21 +178,32 @@ async function main_menu() {
   ]);
 
   switch (menu) {
-    case "Tampilkan Semua Data":
+    case "Tampilkan Semua Data": {
+      console.log("\n");
       tampilkan_data();
+      console.log("\n");
       break;
+    }
 
-    case "Tambah Data Baru":
+    case "Tambah Data Baru": {
+      console.log("\n");
       await tambah_data();
+      console.log("\n");
       break;
+    }
 
-    case "Cari Karyawan":
+    case "Cari Karyawan": {
+      console.log("\n");
       await cari_data();
+      console.log("\n");
       break;
+    }
 
-    case "Keluar":
+    case "Keluar": {
+      console.log("\n");
       console.log("Keluar dari program.");
       process.exit();
+    }
   }
 
   await main_menu();
