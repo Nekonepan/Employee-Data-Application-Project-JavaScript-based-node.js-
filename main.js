@@ -19,6 +19,7 @@ for (let i = 0; i < baris.length; i++) {
   });
 }
 
+// TAMPILKAN DATA =================================================================================
 function tampilkan_data() {
   console.log("\n========== DATA KARYAWAN ==========");
 
@@ -27,9 +28,12 @@ function tampilkan_data() {
   } else {
     console.log("Jumlah Data : ", data.length);
     console.table(data);
+    console.log("\n");
   }
 }
+// ================================================================================================
 
+// TAMBAH DATA BARU ===============================================================================
 async function tambah_data() {
   console.log("\n========== TAMBAH DATA KARYAWAN ==========");
 
@@ -53,7 +57,7 @@ async function tambah_data() {
   // -------------------------------------------------------------
 
   // CEK ID YANG DUPLIKAT ATAU SUDAH DIPAKAI -------------------------
-  const duplicated_id = data.find(item => item.ID === hasil.ID);
+  const duplicated_id = data.find((item) => item.ID === hasil.ID);
   if (duplicated_id) {
     console.log(`ID "${hasil.ID}" sudah digunakan. Gunakan ID lain.`);
     return;
@@ -74,14 +78,18 @@ async function tambah_data() {
       .join("\n") + "\n";
 
   fs.writeFileSync("data-karyawan.txt", write_data);
-  console.log("\n========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN ==========");
+  console.log("========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN ==========\n");
   // ---------------------------------------------------------------------------
 }
+// ================================================================================================
 
+// CARI DATA KARYAWAN =============================================================================
 async function cari_data() {
   console.log("Untuk Cari Data");
 }
+// ================================================================================================
 
+// MENU PILIHAN ===================================================================================
 async function main_menu() {
   const { menu } = await inquirer.prompt([
     {
@@ -103,11 +111,11 @@ async function main_menu() {
       break;
 
     case "Tambah Data Baru":
-      tambah_data();
+      await tambah_data();
       break;
 
     case "Cari Karyawan":
-      cari_data();
+      await cari_data();
       break;
 
     case "Keluar":
@@ -117,5 +125,6 @@ async function main_menu() {
 
   await main_menu();
 }
+// ================================================================================================
 
 main_menu();
