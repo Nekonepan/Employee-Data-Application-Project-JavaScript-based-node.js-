@@ -12,5 +12,14 @@
   "dependencies": {
     "inquirer": "^8.2.4",
     "prompt-sync": "^4.2.0"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nekonepan/Employee-Data-Application-Project-JavaScript-based-node.js-.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Nekonepan/Employee-Data-Application-Project-JavaScript-based-node.js-/issues"
+  },
+  "homepage": "https://github.com/Nekonepan/Employee-Data-Application-Project-JavaScript-based-node.js-#readme"
 }
