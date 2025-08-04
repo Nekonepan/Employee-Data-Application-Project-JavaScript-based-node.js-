@@ -103,6 +103,7 @@ async function tambah_data() {
   console.log("\n========== RINGKASAN DATA YANG AKAN DITAMBAHKAN ==========");
   console.table(new_data);
 
+  // KONFIRMASI AKSI ------------------------------------------
   const { save_confirm } = await inquirer.prompt([
     {
       type: "confirm",
@@ -110,6 +111,7 @@ async function tambah_data() {
       message: "Apakah anda ingin menyimpan data ini ke file?",
     },
   ]);
+  // ----------------------------------------------------------
 
   if (save_confirm) {
     data = data.concat(new_data);
@@ -230,7 +232,7 @@ async function sort_by_id() {
       },
     ]);
 
-    // VALIDASI AKSI -----------------------------------------------------------------------------------------------------
+    // KONFIRMASI AKSI -----------------------------------------------------------------------------------------------------
     if (action === "Simpan hasil sorting ke file") {
       const { confirm_action } = await inquirer.prompt([
         {
@@ -295,6 +297,149 @@ async function sort_by_id() {
 }
 // ================================================================================================
 
+// EDIT DATA KARYAWAN =============================================================================
+async function edit_data() {
+  console.log("========== EDIT DATA KARYAWAN ==========");
+
+  const { methode } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "methode",
+      message: "Pilih metode pencarian data yang akan diedit : ",
+      choices: ["Berdasarkan ID", "Berdasarkan Nama", "Batal"],
+    },
+  ]);
+
+  if (methode === "Batal") {
+    return;
+  }
+
+  let find_data = null;
+
+  switch (methode) {
+    case "Berdasarkan ID": {
+      const { cari_id } = await inquirer.prompt([
+        { name: "cari_id", message: "Masukkan ID karyawan : " },
+      ]);
+
+      find_data = data.find(
+        (item) => item.ID.toLowerCase() === cari_id.trim().toLowerCase()
+      );
+      break;
+    }
+
+    case "Berdasarkan Nama": {
+      const { cari_nama } = await inquirer.prompt([
+        { name: "cari_nama", message: "Masukkan nama karyawan : " },
+      ]);
+
+      const hasil = data.filter((item) =>
+        item.NAMA.toLowerCase().includes(cari_nama.trim().toLowerCase())
+      );
+
+      if (hasil.length === 0) {
+        console.log("Data tidak ditemukan.");
+        return;
+      }
+
+      const { selected } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "selected",
+          message: "Pilih data yang ingin diedit : ",
+          choices: hasil.map((item) => `${item.ID} - ${item.NAMA}`),
+        },
+      ]);
+
+      const id_terpilih = selected.split(" - ")[0];
+      find_data = data.find((item) => item.ID === id_terpilih);
+      break;
+    }
+  }
+
+  if (!find_data) {
+    console.log("Data tidak ditemukan.");
+    return;
+  }
+
+  console.log("========== DATA YANG AKAN DIEDIT ==========");
+  console.table([find_data]);
+
+  const hasil_edit = await inquirer.prompt([
+    {
+      name: "ID",
+      message: `ID baru [ENTER jika tidak ingin mengubah] (${find_data.ID}) : `,
+    },
+    {
+      name: "NAMA",
+      message: `Nama baru [ENTER jika tidak ingin mengubah] (${find_data.NAMA}) : `,
+    },
+    {
+      name: "JABATAN",
+      message: `Jabatan baru [ENTER jika tidak ingin mengubah] (${find_data.JABATAN}) : `,
+    },
+    {
+      name: "TELP",
+      message: `No. Telp baru [ENTER jika tidak ingin mengubah] (${find_data.TELP}) : `,
+    },
+  ]);
+
+  // SIMPAN PERUBAHAN JIKA FIELD TIDAK KOSONG -----------------------
+  const new_ID = hasil_edit.ID.trim() || find_data.ID;
+  const new_NAMA = hasil_edit.NAMA.trim() || find_data.NAMA;
+  const new_JABATAN = hasil_edit.JABATAN.trim() || find_data.JABATAN;
+  const new_TELP = hasil_edit.TELP.trim() || find_data.TELP;
+  // ----------------------------------------------------------------
+
+  // VALIDASI ID DUPLIKAT JIKA ID DIGANTI ---------------------------------
+  if (new_ID !== find_data.ID && data.some((item) => item.ID === new_ID)) {
+    console.log(`ID "${new_ID}" sudah digunakan.`);
+    return;
+  }
+  // ----------------------------------------------------------------------
+
+  console.log("========== BERIKUT PERUBAHAN YANG AKAN DISIMPAN ==========");
+  console.table([
+    {
+      ID: new_ID,
+      NAMA: new_NAMA,
+      JABATAN: new_JABATAN,
+      TELP: new_TELP,
+    },
+  ]);
+
+  // KONFIRMASI SIMPAN ------------------------------------------------
+  const { save_confirm } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "save_confirm",
+      message: "Apakah anda yakin ingin menyimpan perubahan ke file?",
+    },
+  ]);
+
+  if (!save_confirm) {
+    console.log("Perubahan dibatalkan. Tidak ada data yang disimpan.");
+    return;
+  }
+  // ------------------------------------------------------------------
+
+  // SIMPAN PERUBAHAN KE ARRAY JIKA SETUJU ---
+  find_data.ID = new_ID;
+  find_data.NAMA = new_NAMA;
+  find_data.JABATAN = new_JABATAN;
+  find_data.TELP = new_TELP;
+  // -----------------------------------------
+
+  const new_file_data =
+    data
+      .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
+      .join("\n") + "\n";
+
+  fs.writeFileSync("data-karyawan.txt", new_file_data);
+  console.log("Data berhasil diperbarui dan disimpan ke file.");
+}
+// ================================================================================================
+
 // MENU PILIHAN ===================================================================================
 async function main_menu() {
   const { menu } = await inquirer.prompt([
@@ -307,7 +452,8 @@ async function main_menu() {
         "2. Tambah Data Baru",
         "3. Urutkan Data",
         "4. Cari Karyawan",
-        "5. Keluar",
+        "5. Edit Data",
+        "6. Keluar",
       ],
     },
   ]);
@@ -341,7 +487,14 @@ async function main_menu() {
       break;
     }
 
-    case "5. Keluar": {
+    case "5. Edit Data": {
+      console.log("\n");
+      await edit_data();
+      console.log("\n");
+      break;
+    }
+
+    case "6. Keluar": {
       console.log("\n");
       console.log("Keluar dari program.");
       process.exit();
