@@ -1,1 +1,11 @@
-A001|Lutfan Alaudin Naja|HRD|08123456789
+A209|Dewi Lestari|Staf|081234567890
+B014|Satria Nugraha|Supervisor|082199887766
+C032|Lutfan Naja|Staf|081234567890
+D102|Rizky Pratama|HRD|085782341234
+H606|Silvia Handayani|Staf|083298765432
+K320|Fajar Maulana|Staf|089912345678
+M415|Nabila Zahra|HRD|087788899900
+P388|Putri Ayu|Supervisor|082112233445
+Q999|Rendy Kurniawan|Manager|085900112233
+T750|Aditya Putra|Staf|085612345679
+Z871|Intan Maharani|Manager|083145678901
