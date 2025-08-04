@@ -1,6 +1,6 @@
 A209|Dewi Lestari|Staf|081234567890
 B014|Satria Nugraha|Supervisor|082199887766
-C032|Lutfan Naja|Staf|081234567890
+C032|Lutfan Naja|HRD|081234567890
 D102|Rizky Pratama|HRD|085782341234
 F043|Aini Dzorifah|Manager|081412545681
 H606|Silvia Handayani|Staf|083298765432
