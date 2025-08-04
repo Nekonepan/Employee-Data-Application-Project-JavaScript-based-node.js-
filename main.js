@@ -163,64 +163,91 @@ async function cari_data() {
 
 // SORTING DATA BERDASARKAN ID KARYAWAN ===========================================================
 async function sort_by_id() {
-  console.log("========= URUTKAN DATA BERDASARKAN ID ========");
-
-  const { arah } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "arah",
-      message: "Pilih arah pengurutan data : ",
-      choices: ["Ascending (A-Z)", "Descending (Z-A)"],
-    },
-  ]);
-
   const data_sort = [...data];
 
-  data_sort.sort((a, b) => {
-    return arah.includes("Ascending")
-      ? a.ID.localeCompare(b.ID)
-      : b.ID.localeCompare(a.ID);
-  });
+  async function sort_by_id_ascending() {
+    data_sort.sort((a, b) => a.ID.localeCompare(b.ID));
+  }
 
-  console.log("\n========= HASIL SORTING ==========");
-  console.table(data_sort);
+  async function sort_by_id_descending() {
+    data_sort.sort((a, b) => b.ID.localeCompare(a.ID));
+  }
 
-  const { action } = await inquirer.prompt([
+  async function hasil_sorting() {
+    console.log("\n========= HASIL SORTING ==========");
+    console.table(data_sort);
+
+    const { action } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "action",
+        message: "Simpan hasil sorting?",
+        choices: ["Simpan hasil sorting ke file", "Jangan simpan"],
+      },
+    ]);
+
+    // VALIDASI AKSI -----------------------------------------------------------------------------------------------------
+    if (action === "Simpan hasil sorting ke file") {
+      const { confirm_action } = await inquirer.prompt([
+        {
+          type: "confirm",
+          name: "confirm_action",
+          message:
+            "Apakah anda yakin ingin menyimpan data hasil sorting ke file? (Aksi ini akan menimpa semua data sebelumnya)",
+        },
+      ]);
+      // -------------------------------------------------------------------------------------------------------------------
+
+      if (confirm_action) {
+        const new_data =
+          data_sort
+            .map(
+              (item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`
+            )
+            .join("\n") + "\n";
+
+        fs.writeFileSync("data-karyawan.txt", new_data);
+        data = data_sort;
+        console.log("Data telah disimpan ke file.");
+      } else {
+        console.log("Aksi dibatalkan. Data tidak disimpan.");
+      }
+    } else {
+      console.log("Data tidak disimpan.");
+    }
+  }
+
+  console.log("========= URUTKAN DATA BERDASARKAN ID ========");
+  const { menu } = await inquirer.prompt([
     {
       type: "list",
-      name: "action",
-      message: "Simpan hasil sorting?",
-      choices: ["Simpan hasil sorting ke file", "Jangan simpan"],
+      name: "menu",
+      message: "Pilih arah pengurutan data : ",
+      choices: ["Ascending (A-Z)", "Descending (Z-A)", "Kembali"],
     },
   ]);
 
-  // VALIDASI AKSI -----------------------------------------------------------------------------------------------------
-  if (action === "Simpan hasil sorting ke file") {
-    const { confirm_action } = await inquirer.prompt([
-      {
-        type: "confirm",
-        name: "confirm_action",
-        message:
-          "Apakah anda yakin ingin menyimpan data hasil sorting ke file? (Aksi ini akan menimpa semua data sebelumnya)",
-      },
-    ]);
-  // -------------------------------------------------------------------------------------------------------------------
-
-    if (confirm_action) {
-      const new_data =
-        data_sort
-          .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
-          .join("\n") + "\n";
-
-      fs.writeFileSync("data-karyawan.txt", new_data);
-      data = data_sort;
-      console.log("Data telah disimpan ke file.");
-    } else {
-      console.log("Aksi dibatalkan. Data tidak disimpan.");
+  switch (menu) {
+    case "Ascending (A-Z)": {
+      console.log("\n");
+      await sort_by_id_ascending();
+      await hasil_sorting();
+      console.log("\n");
     }
-  } else {
-    console.log("Data tidak disimpan.");
+    
+    case "Descending (Z-A)": {
+      console.log("\n");
+      await sort_by_id_descending();
+      await hasil_sorting();
+      console.log("\n");
+    }
+
+    case "Kembali": {
+      return;
+    }
   }
+
+  
 }
 // ================================================================================================
 
