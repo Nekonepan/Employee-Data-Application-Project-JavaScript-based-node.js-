@@ -36,49 +36,93 @@ function tampilkan_data() {
 async function tambah_data() {
   console.log("========== TAMBAH DATA KARYAWAN ==========");
 
-  const hasil = await inquirer.prompt([
-    { name: "ID", message: "Masukkan ID : " },
-    { name: "NAMA", message: "Masukkan Nama : " },
-    { name: "JABATAN", message: "Masukkan Jabatan : " },
-    { name: "TELP", message: "Masukkan No. Telp : " },
+  const { jumlah_data } = await inquirer.prompt([
+    {
+      name: "jumlah_data",
+      message: "Masukkan jumlah data yang ingin ditambahkan : ",
+      validate: (value) => {
+        const valid = Number.isInteger(Number(value)) && Number(value) > 0;
+        return (
+          valid || "Masukkan jumlah data yang ingin ditambahkan lebih dari 0"
+        );
+      },
+    },
   ]);
 
-  // CEK FIELD JIKA MASIH KOSONG ---------------------------------
-  if (
-    hasil.ID.trim() === "" ||
-    hasil.NAMA.trim() === "" ||
-    hasil.JABATAN.trim() === "" ||
-    hasil.TELP.trim() === ""
-  ) {
-    console.log("Semua field wajib diisi. Data tidak tersimpan!");
+  let new_data = [];
+
+  for (let i = 0; i < Number(jumlah_data); i++) {
+    console.log(`\nData ke-${i + 1}`);
+
+    const hasil = await inquirer.prompt([
+      { name: "ID", message: "Masukkan ID : " },
+      { name: "NAMA", message: "Masukkan Nama : " },
+      { name: "JABATAN", message: "Masukkan Jabatan : " },
+      { name: "TELP", message: "Masukkan No. Telp : " },
+    ]);
+
+    // CEK FIELD JIKA MASIH KOSONG ---------------------------------
+    if (
+      hasil.ID.trim() === "" ||
+      hasil.NAMA.trim() === "" ||
+      hasil.JABATAN.trim() === "" ||
+      hasil.TELP.trim() === ""
+    ) {
+      console.log("Semua field wajib diisi. Data tidak tersimpan!");
+      continue;
+    }
+    // -------------------------------------------------------------
+
+    // CEK ID YANG DUPLIKAT ATAU SUDAH DIPAKAI -------------------------
+    const duplicated_id =
+      data.find((item) => item.ID === hasil.ID) ||
+      new_data.find((item) => item.ID === hasil.ID);
+    if (duplicated_id) {
+      console.log(`ID "${hasil.ID}" sudah digunakan. Gunakan ID lain.`);
+      continue;
+    }
+    // -----------------------------------------------------------------
+
+    // SETELAH LOLOS VALIDASI ----------------------------------------------------
+    new_data.push({
+      ID: hasil.ID,
+      NAMA: hasil.NAMA,
+      JABATAN: hasil.JABATAN,
+      TELP: hasil.TELP,
+    });
+
+    console.log("Data berhasil ditambahkan.");
+    // ---------------------------------------------------------------------------
+  }
+
+  if (new_data.length === 0) {
+    console.log("\nTidak ada data valid yang berhasil ditambahkan.");
     return;
   }
-  // -------------------------------------------------------------
 
-  // CEK ID YANG DUPLIKAT ATAU SUDAH DIPAKAI -------------------------
-  const duplicated_id = data.find((item) => item.ID === hasil.ID);
-  if (duplicated_id) {
-    console.log(`ID "${hasil.ID}" sudah digunakan. Gunakan ID lain.`);
-    return;
+  console.log("\n========== RINGKASAN DATA YANG AKAN DITAMBAHKAN ==========");
+  console.table(new_data);
+
+  const { save_confirm } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "save_confirm",
+      message: "Apakah anda ingin menyimpan data ini ke file?",
+    },
+  ]);
+
+  if (save_confirm) {
+    data = data.concat(new_data);
+    let write_data =
+      data
+        .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
+        .join("\n") + "\n";
+
+    fs.writeFileSync("data-karyawan.txt", write_data);
+    console.log("========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN ==========");
+  } else {
+    console.log("Penyimpanan dibatalkan. Data tidak disimpan.");
   }
-  // -----------------------------------------------------------------
-
-  // SETELAH LOLOS VALIDASI ----------------------------------------------------
-  data.push({
-    ID: hasil.ID,
-    NAMA: hasil.NAMA,
-    JABATAN: hasil.JABATAN,
-    TELP: hasil.TELP,
-  });
-
-  let write_data =
-    data
-      .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
-      .join("\n") + "\n";
-
-  fs.writeFileSync("data-karyawan.txt", write_data);
-  console.log("========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN ==========");
-  // ---------------------------------------------------------------------------
 }
 // ================================================================================================
 
@@ -235,7 +279,7 @@ async function sort_by_id() {
       console.log("\n");
       break;
     }
-    
+
     case "Descending (Z-A)": {
       console.log("\n");
       await sort_by_id_descending();
@@ -248,8 +292,6 @@ async function sort_by_id() {
       return;
     }
   }
-
-  
 }
 // ================================================================================================
 
