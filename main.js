@@ -233,6 +233,7 @@ async function sort_by_id() {
       await sort_by_id_ascending();
       await hasil_sorting();
       console.log("\n");
+      break;
     }
     
     case "Descending (Z-A)": {
@@ -240,6 +241,7 @@ async function sort_by_id() {
       await sort_by_id_descending();
       await hasil_sorting();
       console.log("\n");
+      break;
     }
 
     case "Kembali": {
