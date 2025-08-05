@@ -3,20 +3,36 @@ const inquirer = require("inquirer");
 const fs = require("fs");
 const { type } = require("os");
 
-const isi_file = fs.readFileSync("data-karyawan.txt", "utf-8");
-const baris = isi_file.trim().split("\n");
+const file_path = "data-karyawan.txt";
+
+if (!fs.existsSync(file_path)) {
+  console.warn(`File "${file_path}" tidak ditemukan. Membuat file baru...`);
+  fs.writeFileSync(file_path, "");
+}
+
+let = isi_file = "";
+
+try {
+  isi_file = fs.readFileSync(file_path, "utf-8").trim();
+} catch (err) {
+  console.error(`Gagal membaca file "${file_path}": ${err.message}`);
+  process.exit(1);
+}
+
+const baris = isi_file ? isi_file.split("\n") : [];
 
 let data = [];
 
 for (let i = 0; i < baris.length; i++) {
-  let kolom = baris[i].split("|");
-
-  data.push({
-    ID: kolom[0],
-    NAMA: kolom[1],
-    JABATAN: kolom[2],
-    TELP: kolom[3],
-  });
+  const kolom = baris[i].split("|");
+  if (kolom.length >= 4) {
+    data.push({
+      ID: kolom[0],
+      NAMA: kolom[1],
+      JABATAN: kolom[2],
+      TELP: kolom[3],
+    });
+  }
 }
 
 // TAMPILKAN DATA =================================================================================
@@ -120,8 +136,14 @@ async function tambah_data() {
         .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
         .join("\n") + "\n";
 
-    fs.writeFileSync("data-karyawan.txt", write_data);
-    console.log("========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN ==========");
+    try {
+      fs.writeFileSync(file_path, write_data);
+      console.log(
+        "========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN =========="
+      );
+    } catch (err) {
+      console.error("Gagal menyimpan file.", err.message);
+    }
   } else {
     console.log("Penyimpanan dibatalkan. Data tidak disimpan.");
   }
@@ -252,9 +274,13 @@ async function sort_by_id() {
             )
             .join("\n") + "\n";
 
-        fs.writeFileSync("data-karyawan.txt", new_data);
-        data = data_sort;
-        console.log("Data telah disimpan ke file.");
+        try {
+          fs.writeFileSync(file_path, new_data);
+          data = data_sort;
+          console.log("Data telah disimpan ke file.");
+        } catch (err) {
+          console.error("Gagal menyimpan file.", err.message);
+        }
       } else {
         console.log("Aksi dibatalkan. Data tidak disimpan.");
       }
@@ -435,8 +461,12 @@ async function edit_data() {
       .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
       .join("\n") + "\n";
 
-  fs.writeFileSync("data-karyawan.txt", new_file_data);
-  console.log("Data berhasil diperbarui dan disimpan ke file.");
+  try {
+    fs.writeFileSync(file_path, new_file_data);
+    console.log("Data berhasil diperbarui dan disimpan ke file.");
+  } catch (err) {
+    console.error("Gagal menyimpan file.", err.message);
+  }
 }
 // ================================================================================================
 
@@ -540,8 +570,12 @@ async function delete_data() {
         .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
         .join("\n") + "\n";
 
-    fs.writeFileSync("data-karyawan.txt", new_file_data);
-    console.log("File berhasil diperbarui setelah penghapusan.");
+    try {
+      fs.writeFileSync("data-karyawan.txt", new_file_data);
+      console.log("File berhasil diperbarui setelah penghapusan.");
+    } catch (err) {
+      console.error("Gagal menyimpan file.", err.message);
+    }
   } else {
     console.log("Data di file tidak diubah.");
   }
