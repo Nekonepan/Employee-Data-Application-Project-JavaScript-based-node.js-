@@ -470,6 +470,7 @@ async function edit_data() {
 }
 // ================================================================================================
 
+// HAPUS DATA KARYAWAN ============================================================================
 async function delete_data() {
   console.log("========== HAPUS DATA KARYAWAN ==========");
 
@@ -540,6 +541,7 @@ async function delete_data() {
   console.log("========== DATA YANG AKAN DIHAPUS ==========");
   console.table([target]);
 
+  // KONFIRMASI HAPUS -------------------------------------------
   const { delete_confirm } = await inquirer.prompt([
     {
       type: "confirm",
@@ -555,7 +557,9 @@ async function delete_data() {
 
   data = data.filter((item) => item.ID !== target.ID);
   console.log(`Data dengan ID "${target.ID}" berhasil dihapus.`);
+  // ------------------------------------------------------------
 
+  // KONFIRMASI SIMPAN KE FILE SETELAH HAPUS DATA ----------------------------
   const { save_delete } = await inquirer.prompt([
     {
       type: "confirm",
@@ -579,6 +583,38 @@ async function delete_data() {
   } else {
     console.log("Data di file tidak diubah.");
   }
+  // -------------------------------------------------------------------------
+}
+// ================================================================================================
+
+function show_statistic() {
+  console.log("========== STATISTIK DATA KARYAWAN ==========");
+
+  const total = data.length;
+
+  // STATISTIK PER JABATAN --------------------------------
+  const per_jabatan = {};
+  data.forEach((item) => {
+    const jabatan = item.JABATAN;
+    per_jabatan[jabatan] = (per_jabatan[jabatan] || 0) + 1;
+  });
+  // ------------------------------------------------------
+
+  // STATISTIK PER AWALAN ID --------------------------------
+  const per_awalan_id = {};
+  data.forEach((item) => {
+    const awalan = item.ID[0].toUpperCase();
+    per_awalan_id[awalan] = (per_awalan_id[awalan] || 0) + 1;
+  });
+  // --------------------------------------------------------
+
+  console.log(`\nTotal Karyawan : ${total}`);
+
+  console.log("\nJumlah per Jabatan : ");
+  console.table(per_jabatan);
+
+  console.log("\nJumlah berdasarkan awalan ID : ");
+  console.table(per_awalan_id);
 }
 
 // MENU PILIHAN ===================================================================================
@@ -590,12 +626,13 @@ async function main_menu() {
       message: "Pilih Menu : ",
       choices: [
         "1. Tampilkan Semua Data",
-        "2. Tambah Data Baru",
-        "3. Urutkan Data",
-        "4. Cari Karyawan",
-        "5. Edit Data",
-        "6. Hapus Data",
-        "7. Keluar",
+        "2. Tampilkan Statistik Data Karyawan",
+        "3. Tambah Data Baru",
+        "4. Urutkan Data",
+        "5. Cari Karyawan",
+        "6. Edit Data",
+        "7. Hapus Data",
+        "8. Keluar",
       ],
     },
   ]);
@@ -608,42 +645,49 @@ async function main_menu() {
       break;
     }
 
-    case "2. Tambah Data Baru": {
+    case "2. Tampilkan Statistik Data Karyawan": {
+      console.log("\n");
+      await show_statistic();
+      console.log("\n");
+      break;
+    }
+
+    case "3. Tambah Data Baru": {
       console.log("\n");
       await tambah_data();
       console.log("\n");
       break;
     }
 
-    case "3. Urutkan Data": {
+    case "4. Urutkan Data": {
       console.log("\n");
       await sort_by_id();
       console.log("\n");
       break;
     }
 
-    case "4. Cari Karyawan": {
+    case "5. Cari Karyawan": {
       console.log("\n");
       await cari_data();
       console.log("\n");
       break;
     }
 
-    case "5. Edit Data": {
+    case "6. Edit Data": {
       console.log("\n");
       await edit_data();
       console.log("\n");
       break;
     }
 
-    case "6. Hapus Data": {
+    case "7. Hapus Data": {
       console.log("\n");
       await delete_data();
       console.log("\n");
       break;
     }
 
-    case "7. Keluar": {
+    case "8. Keluar": {
       console.log("\n");
       console.log("Keluar dari program.");
       process.exit();
