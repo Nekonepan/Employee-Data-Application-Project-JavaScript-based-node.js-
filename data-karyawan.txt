@@ -7,7 +7,6 @@ H606|Silvia Handayani|Staf|083298765432
 K320|Fajar Maulana|Staf|089912345678
 M415|Nabila Zahra|HRD|087788899900
 P388|Putri Ayu|Supervisor|082112233445
-Q999|Rendy Kurniawan|Manager|085900112233
 R102|Ahmad Fulan|Manager|085632145697
 T750|Aditya Putra|Staf|085612345679
 Z871|Intan Maharani|Manager|083145678901
