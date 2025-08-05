@@ -440,6 +440,113 @@ async function edit_data() {
 }
 // ================================================================================================
 
+async function delete_data() {
+  console.log("========== HAPUS DATA KARYAWAN ==========");
+
+  const { methode } = await inquirer.prompt([
+    {
+      type: "list",
+      name: "methode",
+      message: "Pilih metode pencarian data yang akan dihapus : ",
+      choices: ["Berdasarkan ID", "Berdasarkan Nama", "Batal"],
+    },
+  ]);
+
+  let target = null;
+
+  switch (methode) {
+    case "Berdasarkan ID": {
+      const { cari_id } = await inquirer.prompt([
+        { name: "cari_id", message: "Masukkan ID karyawan : " },
+      ]);
+
+      target = data.find(
+        (item) => item.ID.toLowerCase() === cari_id.trim().toLowerCase()
+      );
+      break;
+    }
+
+    case "Berdasarkan Nama": {
+      const { cari_nama } = await inquirer.prompt([
+        {
+          name: "cari_nama",
+          message: "Masukkan nama (atau sebagian) karyawan : ",
+        },
+      ]);
+
+      const hasil = data.filter((item) =>
+        item.NAMA.toLowerCase().includes(cari_nama.trim().toLowerCase())
+      );
+
+      if (hasil.length === 0) {
+        console.log("Data tidak ditemukan.");
+        return;
+      }
+
+      const { selected } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "selected",
+          message: "Pilih data yang ingin dihapus : ",
+          choices: hasil.map((item) => `${item.ID} - ${item.NAMA}`),
+        },
+      ]);
+
+      const id_terpilih = selected.split(" - ")[0];
+      target = data.find((item) => item.ID === id_terpilih);
+      break;
+    }
+
+    case "Batal": {
+      return;
+    }
+  }
+
+  if (!target) {
+    console.log("Data tidak ditemukan.");
+    return;
+  }
+
+  console.log("========== DATA YANG AKAN DIHAPUS ==========");
+  console.table([target]);
+
+  const { delete_confirm } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "delete_confirm",
+      message: "Apakah anda yakin ingin menghapus data ini?",
+    },
+  ]);
+
+  if (!delete_confirm) {
+    console.log("Penghapusan dibatalkan.");
+    return;
+  }
+
+  data = data.filter((item) => item.ID !== target.ID);
+  console.log(`Data dengan ID "${target.ID}" berhasil dihapus.`);
+
+  const { save_delete } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "save_delete",
+      message: "Apakah ingin menyimpan hasil penghapusan ke file?",
+    },
+  ]);
+
+  if (save_delete) {
+    const new_file_data =
+      data
+        .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
+        .join("\n") + "\n";
+
+    fs.writeFileSync("data-karyawan.txt", new_file_data);
+    console.log("File berhasil diperbarui setelah penghapusan.");
+  } else {
+    console.log("Data di file tidak diubah.");
+  }
+}
+
 // MENU PILIHAN ===================================================================================
 async function main_menu() {
   const { menu } = await inquirer.prompt([
@@ -453,7 +560,8 @@ async function main_menu() {
         "3. Urutkan Data",
         "4. Cari Karyawan",
         "5. Edit Data",
-        "6. Keluar",
+        "6. Hapus Data",
+        "7. Keluar",
       ],
     },
   ]);
@@ -494,7 +602,14 @@ async function main_menu() {
       break;
     }
 
-    case "6. Keluar": {
+    case "6. Hapus Data": {
+      console.log("\n");
+      await delete_data();
+      console.log("\n");
+      break;
+    }
+
+    case "7. Keluar": {
       console.log("\n");
       console.log("Keluar dari program.");
       process.exit();
