@@ -253,16 +253,6 @@ async function cari_data() {
 
 // SORTING DATA BERDASARKAN ID KARYAWAN ===========================================================
 async function sort_by_id() {
-  // const data_sort = [...data];
-
-  // async function sort_by_id_ascending() {
-  //   data_sort.sort((a, b) => a.ID.localeCompare(b.ID));
-  // }
-
-  // async function sort_by_id_descending() {
-  //   data_sort.sort((a, b) => b.ID.localeCompare(a.ID));
-  // }
-
   async function hasil_sorting(data_sort) {
     console.log("\n========= HASIL SORTING ==========");
     console.table(data_sort);
