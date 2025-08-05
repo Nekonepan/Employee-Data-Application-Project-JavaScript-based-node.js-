@@ -84,8 +84,8 @@ node main.js
 | Edit data with confirmation       | ✅      |
 | Search by ID or Name              | ✅      |
 | Sort (ascending/descending by ID) | ✅      |
-| Validasi field kosong & format    | ✅      |
-| Konfirmasi sebelum simpan         | ✅      |
+| Empty field validation & format   | ✅      |
+| Confirm before save               | ✅      |
 | Modular functions per feature     | ✅      |
 | File backup & logging             | ✅      |
 
