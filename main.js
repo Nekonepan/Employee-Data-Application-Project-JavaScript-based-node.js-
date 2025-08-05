@@ -2,15 +2,18 @@ const prompt = require("prompt-sync")();
 const inquirer = require("inquirer");
 const fs = require("fs");
 const { type } = require("os");
+const { measureMemory } = require("vm");
 
 const file_path = "data-karyawan.txt";
+const backup_path = "data-karyawan-backup.txt";
+const log_path = "logs/data-terhapus.txt";
 
 if (!fs.existsSync(file_path)) {
   console.warn(`File "${file_path}" tidak ditemukan. Membuat file baru...`);
   fs.writeFileSync(file_path, "");
 }
 
-let = isi_file = "";
+let isi_file = "";
 
 try {
   isi_file = fs.readFileSync(file_path, "utf-8").trim();
@@ -34,6 +37,16 @@ for (let i = 0; i < baris.length; i++) {
     });
   }
 }
+
+// BACKUP DATA SEBELUMNYAA ========================================================================
+function backup_data() {
+  try {
+    fs.copyFileSync(file_path, backup_path);
+  } catch (err) {
+    console.error("Gagal melakukan backup : ", err.message);
+  }
+}
+// ================================================================================================
 
 // TAMPILKAN DATA =================================================================================
 function tampilkan_data() {
@@ -138,6 +151,7 @@ async function tambah_data() {
 
     try {
       fs.writeFileSync(file_path, write_data);
+      backup_data();
       console.log(
         "========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN =========="
       );
@@ -231,17 +245,17 @@ async function cari_data() {
 
 // SORTING DATA BERDASARKAN ID KARYAWAN ===========================================================
 async function sort_by_id() {
-  const data_sort = [...data];
+  // const data_sort = [...data];
 
-  async function sort_by_id_ascending() {
-    data_sort.sort((a, b) => a.ID.localeCompare(b.ID));
-  }
+  // async function sort_by_id_ascending() {
+  //   data_sort.sort((a, b) => a.ID.localeCompare(b.ID));
+  // }
 
-  async function sort_by_id_descending() {
-    data_sort.sort((a, b) => b.ID.localeCompare(a.ID));
-  }
+  // async function sort_by_id_descending() {
+  //   data_sort.sort((a, b) => b.ID.localeCompare(a.ID));
+  // }
 
-  async function hasil_sorting() {
+  async function hasil_sorting(data_sort) {
     console.log("\n========= HASIL SORTING ==========");
     console.table(data_sort);
 
@@ -277,6 +291,7 @@ async function sort_by_id() {
         try {
           fs.writeFileSync(file_path, new_data);
           data = data_sort;
+          backup_data();
           console.log("Data telah disimpan ke file.");
         } catch (err) {
           console.error("Gagal menyimpan file.", err.message);
@@ -302,16 +317,16 @@ async function sort_by_id() {
   switch (menu) {
     case "Ascending (A-Z)": {
       console.log("\n");
-      await sort_by_id_ascending();
-      await hasil_sorting();
+      const data_sort = [...data].sort((a, b) => a.ID.localeCompare(b.ID));
+      await hasil_sorting(data_sort);
       console.log("\n");
       break;
     }
 
     case "Descending (Z-A)": {
       console.log("\n");
-      await sort_by_id_descending();
-      await hasil_sorting();
+      const data_sort = [...data].sort((a, b) => b.ID.localeCompare(a.ID));
+      await hasil_sorting(data_sort);
       console.log("\n");
       break;
     }
@@ -463,6 +478,7 @@ async function edit_data() {
 
   try {
     fs.writeFileSync(file_path, new_file_data);
+    backup_data();
     console.log("Data berhasil diperbarui dan disimpan ke file.");
   } catch (err) {
     console.error("Gagal menyimpan file.", err.message);
@@ -574,8 +590,24 @@ async function delete_data() {
         .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
         .join("\n") + "\n";
 
+    backup_data();
+
+    if (!fs.existsSync("logs")) {
+      fs.mkdirSync("logs");
+    }
+
     try {
-      fs.writeFileSync("data-karyawan.txt", new_file_data);
+      fs.appendFileSync(
+        log_path,
+        `${target.ID}|${target.NAMA}|${target.JABATAN}|${target.TELP}\n`
+      );
+      console.log("Data yang terhapus telah dicatat di `data-terhapus.txt`");
+    } catch (err) {
+      console.error("Gagal mencatat log penghapusan", err.message);
+    }
+
+    try {
+      fs.writeFileSync(file_path, new_file_data);
       console.log("File berhasil diperbarui setelah penghapusan.");
     } catch (err) {
       console.error("Gagal menyimpan file.", err.message);
@@ -587,6 +619,7 @@ async function delete_data() {
 }
 // ================================================================================================
 
+// MENAMPILKAN STATISTIK KARYAWAN =================================================================
 function show_statistic() {
   console.log("========== STATISTIK DATA KARYAWAN ==========");
 
@@ -616,6 +649,82 @@ function show_statistic() {
   console.log("\nJumlah berdasarkan awalan ID : ");
   console.table(per_awalan_id);
 }
+// ================================================================================================
+
+// RESTORE DATA DARI BACKUP =======================================================================
+async function restore_data() {
+  console.log("========== RESTORE DATA DARI BACKUP ==========");
+
+  // CEK APAKAH BACKUP ADA ------------------------
+  if (!fs.existsSync(backup_path)) {
+    console.warn("File backup tidak ditemukan");
+    return;
+  }
+  // ----------------------------------------------
+
+  // KONFIRMASI PERTAMA -----------------------------------------------------------------------------
+  const { confirm_action } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "confirm_action",
+      message:
+        "[PERINGATAN] File backup akan menimpa file utama. Apakah Anda yakin ingin melanjutkan?",
+    },
+  ]);
+  // ------------------------------------------------------------------------------------------------
+
+  if (!confirm_action) {
+    console.log("Restore Data dibatalkan.");
+    return;
+  }
+
+  // KONFIRMASI KEDUA ---------------------------------------------------
+  const { double_confirm_action } = await inquirer.prompt([
+    {
+      type: "confirm",
+      name: "double_confirm_action",
+      message: "Apakah kamu yakin ingin mengembalikan data dari backup?",
+    },
+  ]);
+  // --------------------------------------------------------------------
+
+  if (!double_confirm_action) {
+    console.log("Restore Data dibatalkan.");
+    return;
+  }
+
+  // SETELAH KONFIRMASI -------------------------------------------------
+  try {
+    fs.copyFileSync(backup_path, file_path);
+    console.log(
+      "Restore data berhasil.File Utama telah ditimpa dengan File Backup"
+    );
+    console.log(`${data.length} data berhasil dimuat dari backup.`);
+
+    // LOAD ULANG DATA KE MEMORY -------------------------------
+    const isi_file_restore = fs.readFileSync(file_path, "utf-8").trim();
+    const baris_restore = isi_file_restore ? isi_file_restore.split("\n") : [];
+
+    data = [];
+
+    for (let i = 0; i < baris_restore.length; i++) {
+      const kolom = baris_restore[i].split("|");
+      if (kolom.length >= 4) {
+        data.push({
+          ID: kolom[0],
+          NAMA: kolom[1],
+          JABATAN: kolom[2],
+          TELP: kolom[3],
+        });
+      }
+    }
+    // ---------------------------------------------------------
+  } catch (err) {
+    console.error("Gagal melakukan restore", err.message);
+  }
+  // --------------------------------------------------------------------
+}
+// ================================================================================================
 
 // MENU PILIHAN ===================================================================================
 async function main_menu() {
@@ -632,7 +741,8 @@ async function main_menu() {
         "5. Cari Karyawan",
         "6. Edit Data",
         "7. Hapus Data",
-        "8. Keluar",
+        "8. Restore Data dari Backup",
+        "9. Keluar",
       ],
     },
   ]);
@@ -647,7 +757,7 @@ async function main_menu() {
 
     case "2. Tampilkan Statistik Data Karyawan": {
       console.log("\n");
-      await show_statistic();
+      show_statistic();
       console.log("\n");
       break;
     }
@@ -687,7 +797,14 @@ async function main_menu() {
       break;
     }
 
-    case "8. Keluar": {
+    case "8. Restore Data dari Backup": {
+      console.log("\n");
+      await restore_data();
+      console.log("\n");
+      break;
+    }
+
+    case "9. Keluar": {
       console.log("\n");
       console.log("Keluar dari program.");
       process.exit();
