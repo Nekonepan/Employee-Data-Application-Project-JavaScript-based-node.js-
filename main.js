@@ -5,12 +5,20 @@ const { type } = require("os");
 const { measureMemory } = require("vm");
 
 const file_path = "data-karyawan.txt";
-const backup_path = "data-karyawan-backup.txt";
+const backup_path = "backup/data-karyawan-backup.txt";
 const log_path = "logs/data-terhapus.txt";
 
 if (!fs.existsSync(file_path)) {
   console.warn(`File "${file_path}" tidak ditemukan. Membuat file baru...`);
   fs.writeFileSync(file_path, "");
+}
+
+if (!fs.existsSync("logs")) {
+  fs.mkdirSync("logs");
+}
+
+if (!fs.existsSync("backup")) {
+  fs.mkdirSync("backup");
 }
 
 let isi_file = "";
@@ -591,10 +599,6 @@ async function delete_data() {
         .join("\n") + "\n";
 
     backup_data();
-
-    if (!fs.existsSync("logs")) {
-      fs.mkdirSync("logs");
-    }
 
     try {
       fs.appendFileSync(
