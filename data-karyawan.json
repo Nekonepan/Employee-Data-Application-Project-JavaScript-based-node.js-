@@ -1,1 +1,50 @@
-[]
+[
+  {
+    "ID": "A054",
+    "NAMA": "Dewi Lestari",
+    "JABATAN": "Manager",
+    "TELP": "081311223344"
+  },
+  {
+    "ID": "B076",
+    "NAMA": "Siti Aminah",
+    "JABATAN": "Staff",
+    "TELP": "081377788899"
+  },
+  {
+    "ID": "C087",
+    "NAMA": "Rizky Pratama",
+    "JABATAN": "Staff",
+    "TELP": "081234567890"
+  },
+  {
+    "ID": "D098",
+    "NAMA": "Putri Ayu",
+    "JABATAN": "Staff",
+    "TELP": "081322233344"
+  },
+  {
+    "ID": "E015",
+    "NAMA": "Bayu Nugroho",
+    "JABATAN": "Manager",
+    "TELP": "081355566677"
+  },
+  {
+    "ID": "H021",
+    "NAMA": "Agus Salim",
+    "JABATAN": "Manager",
+    "TELP": "081399988877"
+  },
+  {
+    "ID": "I034",
+    "NAMA": "Rina Wulandari",
+    "JABATAN": "Staff",
+    "TELP": "081366677788"
+  },
+  {
+    "ID": "J065",
+    "NAMA": "Melati Sari",
+    "JABATAN": "Supervisor",
+    "TELP": "082177766655"
+  }
+]

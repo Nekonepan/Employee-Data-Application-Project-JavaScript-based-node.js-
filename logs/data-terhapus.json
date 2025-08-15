@@ -1,0 +1,23 @@
+[
+  {
+    "ID": "X102",
+    "NAMA": "Lutfan Hasanudin",
+    "JABATAN": "HRD",
+    "TELP": "082357671280",
+    "deleted_at": "2025-08-15T11:28:35.189Z"
+  },
+  {
+    "ID": "G042",
+    "NAMA": "Farhan Hidayat",
+    "JABATAN": "Supervisor",
+    "TELP": "082133344455",
+    "deleted_at": "2025-08-15T11:30:34.178Z"
+  },
+  {
+    "ID": "F029",
+    "NAMA": "Lutfan Naja",
+    "JABATAN": "Supervisor",
+    "TELP": "082198765432",
+    "deleted_at": "2025-08-15T11:33:04.307Z"
+  }
+]
