@@ -3,10 +3,13 @@ const inquirer = require("inquirer");
 const fs = require("fs");
 const { type } = require("os");
 const { measureMemory } = require("vm");
+const { captureRejectionSymbol } = require("events");
 
-const file_path = "data-karyawan.txt";
-const backup_path = "backup/data-karyawan-backup.txt";
-const log_path = "logs/data-terhapus.txt";
+const file_path = "data-karyawan.json";
+const backup_path = "backup/data-karyawan-backup.json";
+const log_path = "logs/data-terhapus.json";
+
+let data = read_data();
 
 if (!fs.existsSync(file_path)) {
   console.warn(`File "${file_path}" tidak ditemukan. Membuat file baru...`);
@@ -21,37 +24,40 @@ if (!fs.existsSync("backup")) {
   fs.mkdirSync("backup");
 }
 
-let isi_file = "";
-
-try {
-  isi_file = fs.readFileSync(file_path, "utf-8").trim();
-} catch (err) {
-  console.error(`Gagal membaca file "${file_path}": ${err.message}`);
-  process.exit(1);
-}
-
-const baris = isi_file ? isi_file.split("\n") : [];
-
-let data = [];
-
-for (let i = 0; i < baris.length; i++) {
-  const kolom = baris[i].split("|");
-  if (kolom.length >= 4) {
-    data.push({
-      ID: kolom[0],
-      NAMA: kolom[1],
-      JABATAN: kolom[2],
-      TELP: kolom[3],
-    });
+// BACA DATA ======================================================================================
+function read_data() {
+  try {
+    if (!fs.existsSync(file_path)) {
+      fs.writeFileSync(file_path, "[]");
+      return [];
+    }
+    const content = fs.readFileSync(file_path, "utf-8").trim();
+    return content ? JSON.parse(content) : [];
+  } catch (err) {
+    console.error("Gagal membaca atau parsing file JSON:", err.message);
+    return [];
   }
 }
+// ================================================================================================
+
+// SIMPAN DATA KE FILE ============================================================================
+function write_data() {
+  try {
+    fs.writeFileSync(file_path, JSON.stringify(data, null, 2));
+    backup_data();
+    console.log("Data berhasil disimpan ke file.");
+  } catch (err) {
+    console.error(`Gagal untuk menyimpan file : ${err.message}`);
+  }
+}
+// ================================================================================================
 
 // BACKUP DATA SEBELUMNYAA ========================================================================
 function backup_data() {
   try {
     fs.copyFileSync(file_path, backup_path);
   } catch (err) {
-    console.error("Gagal melakukan backup : ", err.message);
+    console.error(`Gagal melakukan backup : ${err.message}`);
   }
 }
 // ================================================================================================
@@ -71,104 +77,182 @@ function tampilkan_data() {
 
 // TAMBAH DATA BARU ===============================================================================
 async function tambah_data() {
-  console.log("========== TAMBAH DATA KARYAWAN ==========");
+  console.log("========== TAMBAH DATA BARU ==========");
 
-  const { jumlah_data } = await inquirer.prompt([
-    {
-      name: "jumlah_data",
-      message: "Masukkan jumlah data yang ingin ditambahkan : ",
-      validate: (value) => {
-        const valid = Number.isInteger(Number(value)) && Number(value) > 0;
-        return (
-          valid || "Masukkan jumlah data yang ingin ditambahkan lebih dari 0"
-        );
+  try {
+    const { ID, NAMA, JABATAN, TELP } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "ID",
+        message: "Masukkan ID karyawan:",
+        validate: (val) => {
+          if (!val.trim()) {
+            return "ID tidak boleh kosong!";
+          }
+          if (!/^[A-Za-z0-9]+$/.test(val)) {
+            return "ID hanya boleh huruf dan angka!";
+          }
+          if (
+            data.some(
+              (karyawan) => karyawan.ID.toUpperCase() === val.toUpperCase()
+            )
+          ) {
+            return "ID sudah digunakan!";
+          }
+          return true;
+        },
       },
-    },
-  ]);
-
-  let new_data = [];
-
-  for (let i = 0; i < Number(jumlah_data); i++) {
-    console.log(`\nData ke-${i + 1}`);
-
-    const hasil = await inquirer.prompt([
-      { name: "ID", message: "Masukkan ID : " },
-      { name: "NAMA", message: "Masukkan Nama : " },
-      { name: "JABATAN", message: "Masukkan Jabatan : " },
-      { name: "TELP", message: "Masukkan No. Telp : " },
+      {
+        type: "input",
+        name: "NAMA",
+        message: "Masukkan nama karyawan:",
+        validate: (val) => {
+          if (!val.trim()) {
+            return "Nama tidak boleh kosong!";
+          }
+          return true;
+        },
+      },
+      {
+        type: "input",
+        name: "JABATAN",
+        message: "Masukkan jabatan karyawan:",
+        validate: (val) => {
+          if (!val.trim()) {
+            return "Jabatan tidak boleh kosong!";
+          }
+          return true;
+        },
+      },
+      {
+        type: "input",
+        name: "TELP",
+        message: "Masukkan no telp karyawan:",
+        validate: (val) => {
+          if (!val.trim()) {
+            return "Nomor telepon tidak boleh kosong!";
+          }
+          if (!/^[0-9]+$/.test(val)) {
+            return "Nomor telepon hanya boleh angka!";
+          }
+          return true;
+        },
+      },
     ]);
 
-    // CEK FIELD JIKA MASIH KOSONG ---------------------------------
-    if (
-      hasil.ID.trim() === "" ||
-      hasil.NAMA.trim() === "" ||
-      hasil.JABATAN.trim() === "" ||
-      hasil.TELP.trim() === ""
-    ) {
-      console.log("Semua field wajib diisi. Data tidak tersimpan!");
-      continue;
-    }
-    // -------------------------------------------------------------
+    const { konfirmasi } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "konfirmasi",
+        message: "Apakah anda yakin ingin menyimpan data ini?",
+      },
+    ]);
 
-    // CEK ID YANG DUPLIKAT ATAU SUDAH DIPAKAI -------------------------
-    const duplicated_id =
-      data.find((item) => item.ID === hasil.ID) ||
-      new_data.find((item) => item.ID === hasil.ID);
-    if (duplicated_id) {
-      console.log(`ID "${hasil.ID}" sudah digunakan. Gunakan ID lain.`);
-      continue;
+    if (!konfirmasi) {
+      console.log("Data batal disimpan.");
+      return;
     }
-    // -----------------------------------------------------------------
 
-    // SETELAH LOLOS VALIDASI ----------------------------------------------------
-    new_data.push({
-      ID: hasil.ID,
-      NAMA: hasil.NAMA,
-      JABATAN: hasil.JABATAN,
-      TELP: hasil.TELP,
+    data.push({
+      ID: ID.trim().toUpperCase(),
+      NAMA: NAMA.trim(),
+      JABATAN: JABATAN.trim(),
+      TELP: TELP.trim(),
     });
 
-    console.log("Data berhasil ditambahkan.");
-    // ---------------------------------------------------------------------------
+    write_data();
+    backup_data();
+
+    console.log("Data berhasil disimpan.");
+  } catch (err) {
+    console.error("Terjadi kesalahan saat menambahkan data:", err.message);
   }
 
-  if (new_data.length === 0) {
-    console.log("\nTidak ada data valid yang berhasil ditambahkan.");
-    return;
-  }
+  // console.log("========== TAMBAH DATA KARYAWAN ==========");
 
-  console.log("\n========== RINGKASAN DATA YANG AKAN DITAMBAHKAN ==========");
-  console.table(new_data);
+  // const { jumlah_data } = await inquirer.prompt([
+  //   {
+  //     name: "jumlah_data",
+  //     message: "Masukkan jumlah data yang ingin ditambahkan : ",
+  //     validate: (value) => {
+  //       const valid = Number.isInteger(Number(value)) && Number(value) > 0;
+  //       return (
+  //         valid || "Masukkan jumlah data yang ingin ditambahkan lebih dari 0"
+  //       );
+  //     },
+  //   },
+  // ]);
 
-  // KONFIRMASI AKSI ------------------------------------------
-  const { save_confirm } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "save_confirm",
-      message: "Apakah anda ingin menyimpan data ini ke file?",
-    },
-  ]);
-  // ----------------------------------------------------------
+  // let new_data = [];
 
-  if (save_confirm) {
-    data = data.concat(new_data);
-    let write_data =
-      data
-        .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
-        .join("\n") + "\n";
+  // for (let i = 0; i < Number(jumlah_data); i++) {
+  //   console.log(`\nData ke-${i + 1}`);
 
-    try {
-      fs.writeFileSync(file_path, write_data);
-      backup_data();
-      console.log(
-        "========== DATA BERHASIL DITAMBAHKAN DAN DISIMPAN =========="
-      );
-    } catch (err) {
-      console.error("Gagal menyimpan file.", err.message);
-    }
-  } else {
-    console.log("Penyimpanan dibatalkan. Data tidak disimpan.");
-  }
+  //   const hasil = await inquirer.prompt([
+  //     { name: "ID", message: "Masukkan ID : " },
+  //     { name: "NAMA", message: "Masukkan Nama : " },
+  //     { name: "JABATAN", message: "Masukkan Jabatan : " },
+  //     { name: "TELP", message: "Masukkan No. Telp : " },
+  //   ]);
+
+  //   // CEK FIELD JIKA MASIH KOSONG ---------------------------------
+  //   if (
+  //     hasil.ID.trim() === "" ||
+  //     hasil.NAMA.trim() === "" ||
+  //     hasil.JABATAN.trim() === "" ||
+  //     hasil.TELP.trim() === ""
+  //   ) {
+  //     console.log("Semua field wajib diisi. Data tidak tersimpan!");
+  //     continue;
+  //   }
+  //   // -------------------------------------------------------------
+
+  //   // CEK ID YANG DUPLIKAT ATAU SUDAH DIPAKAI -------------------------
+  //   const duplicated_id =
+  //     data.find((item) => item.ID === hasil.ID) ||
+  //     new_data.find((item) => item.ID === hasil.ID);
+  //   if (duplicated_id) {
+  //     console.log(`ID "${hasil.ID}" sudah digunakan. Gunakan ID lain.`);
+  //     continue;
+  //   }
+  //   // -----------------------------------------------------------------
+
+  //   // SETELAH LOLOS VALIDASI ----------------------------------------------------
+  //   new_data.push({
+  //     ID: hasil.ID,
+  //     NAMA: hasil.NAMA,
+  //     JABATAN: hasil.JABATAN,
+  //     TELP: hasil.TELP,
+  //   });
+
+  //   console.log("Data berhasil ditambahkan.");
+  //   // ---------------------------------------------------------------------------
+  // }
+
+  // if (new_data.length === 0) {
+  //   console.log("\nTidak ada data valid yang berhasil ditambahkan.");
+  //   return;
+  // }
+
+  // console.log("\n========== RINGKASAN DATA YANG AKAN DITAMBAHKAN ==========");
+  // console.table(new_data);
+
+  // // KONFIRMASI AKSI ------------------------------------------
+  // const { save_confirm } = await inquirer.prompt([
+  //   {
+  //     type: "confirm",
+  //     name: "save_confirm",
+  //     message: "Apakah anda ingin menyimpan data ini ke file?",
+  //   },
+  // ]);
+  // // ----------------------------------------------------------
+
+  // if (save_confirm) {
+  //   data = data.concat(new_data);
+  //   write_data();
+  // } else {
+  //   console.log("Penyimpanan dibatalkan. Data tidak disimpan.");
+  // }
 }
 // ================================================================================================
 
@@ -218,42 +302,109 @@ async function search_by_name() {
 async function cari_data() {
   console.log("========= CARI DATA KARYAWAN =========");
 
-  const { methode } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "methode",
-      message: "Pilih metode pencarian : ",
-      choices: [
-        "Cari berdasarkan ID",
-        "Cari berdasarkan Nama",
-        "Kembali ke menu",
-      ],
-    },
-  ]);
+  try {
+    const { tipe } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "tipe",
+        message: "Cari berdasarkan:",
+        choices: ["ID", "Nama"],
+      },
+    ]);
 
-  switch (methode) {
-    case "Cari berdasarkan ID": {
-      console.log("\n");
-      await search_by_id();
-      console.log("\n");
-      break;
+    const { keyword } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "keyword",
+        message: `Masukkan ${tipe} yang ingin dicari:`,
+        validate: (val) => {
+          if (!val.trim()) {
+            return `${tipe} tidak boleh kosong!`;
+          }
+          return true;
+        },
+      },
+    ]);
+
+    const keyword_lower = keyword.trim().toLowerCase();
+
+    let hasil = [];
+    if (tipe === "ID") {
+      hasil = data.filter((karyawan) =>
+        karyawan.ID.toLowerCase().includes(keyword_lower)
+      );
+    } else {
+      hasil = data.filter((karyawan) =>
+        karyawan.NAMA.toLowerCase().includes(keyword_lower)
+      );
     }
-    case "Cari berdasarkan Nama": {
-      console.log("\n");
-      await search_by_name();
-      console.log("\n");
-      break;
+
+    if (hasil.length === 0) {
+      console.log("Data tidak ditemukan.");
+    } else {
+      console.table(hasil);
     }
-    case "Kembali ke menu": {
-      return;
-    }
+  } catch (err) {
+    console.error("Terjadi kesalahan saat mencari data:", err.message);
   }
+
+  // console.log("========= CARI DATA KARYAWAN =========");
+
+  // const { methode } = await inquirer.prompt([
+  //   {
+  //     type: "list",
+  //     name: "methode",
+  //     message: "Pilih metode pencarian : ",
+  //     choices: [
+  //       "Cari berdasarkan ID",
+  //       "Cari berdasarkan Nama",
+  //       "Kembali ke menu",
+  //     ],
+  //   },
+  // ]);
+
+  // switch (methode) {
+  //   case "Cari berdasarkan ID": {
+  //     console.log("\n");
+  //     await search_by_id();
+  //     console.log("\n");
+  //     break;
+  //   }
+  //   case "Cari berdasarkan Nama": {
+  //     console.log("\n");
+  //     await search_by_name();
+  //     console.log("\n");
+  //     break;
+  //   }
+  //   case "Kembali ke menu": {
+  //     return;
+  //   }
+  // }
 }
 // ================================================================================================
 
 // SORTING DATA BERDASARKAN ID KARYAWAN ===========================================================
 async function sort_by_id() {
-  async function hasil_sorting(data_sort) {
+  console.log("========= URUTKAN DATA BERDASARKAN ID =========");
+
+  try {
+    const { arah } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "arah",
+        message: "Pilih arah pengurutan data : ",
+        choices: ["Ascending (A-Z)", "Descending (Z-A)"],
+      },
+    ]);
+
+    const data_sort = [...data];
+
+    if (arah === "Ascending (A-Z)") {
+      data_sort.sort((a, b) => a.ID.localeCompare(b.ID));
+    } else {
+      data_sort.sort((a, b) => b.ID.localeCompare(a.ID));
+    }
+
     console.log("\n========= HASIL SORTING ==========");
     console.table(data_sort);
 
@@ -266,7 +417,6 @@ async function sort_by_id() {
       },
     ]);
 
-    // KONFIRMASI AKSI -----------------------------------------------------------------------------------------------------
     if (action === "Simpan hasil sorting ke file") {
       const { confirm_action } = await inquirer.prompt([
         {
@@ -276,63 +426,89 @@ async function sort_by_id() {
             "Apakah anda yakin ingin menyimpan data hasil sorting ke file? (Aksi ini akan menimpa semua data sebelumnya)",
         },
       ]);
-      // -------------------------------------------------------------------------------------------------------------------
 
       if (confirm_action) {
-        const new_data =
-          data_sort
-            .map(
-              (item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`
-            )
-            .join("\n") + "\n";
-
-        try {
-          fs.writeFileSync(file_path, new_data);
-          data = data_sort;
-          backup_data();
-          console.log("Data telah disimpan ke file.");
-        } catch (err) {
-          console.error("Gagal menyimpan file.", err.message);
-        }
+        data = data_sort;
+        write_data();
+        backup_data();
+        console.log("Data telah disimpan ke file.");
       } else {
-        console.log("Aksi dibatalkan. Data tidak disimpan.");
+        console.log("Data tidak disimpan.");
       }
     } else {
       console.log("Data tidak disimpan.");
     }
+  } catch (err) {
+    console.error("Terjadi kesalahan saat mengurutkan data:", err.message);
   }
 
-  console.log("========= URUTKAN DATA BERDASARKAN ID ========");
-  const { menu } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "menu",
-      message: "Pilih arah pengurutan data : ",
-      choices: ["Ascending (A-Z)", "Descending (Z-A)", "Kembali"],
-    },
-  ]);
+  // async function hasil_sorting(data_sort) {
+  //   console.log("\n========= HASIL SORTING ==========");
+  //   console.table(data_sort);
 
-  switch (menu) {
-    case "Ascending (A-Z)": {
-      console.log("\n");
-      const data_sort = [...data].sort((a, b) => a.ID.localeCompare(b.ID));
-      await hasil_sorting(data_sort);
-      console.log("\n");
-      break;
-    }
+  //   const { action } = await inquirer.prompt([
+  //     {
+  //       type: "list",
+  //       name: "action",
+  //       message: "Simpan hasil sorting?",
+  //       choices: ["Simpan hasil sorting ke file", "Jangan simpan"],
+  //     },
+  //   ]);
 
-    case "Descending (Z-A)": {
-      console.log("\n");
-      const data_sort = [...data].sort((a, b) => b.ID.localeCompare(a.ID));
-      await hasil_sorting(data_sort);
-      console.log("\n");
-      break;
-    }
+  //   // KONFIRMASI AKSI -----------------------------------------------------------------------------------------------------
+  //   if (action === "Simpan hasil sorting ke file") {
+  //     const { confirm_action } = await inquirer.prompt([
+  //       {
+  //         type: "confirm",
+  //         name: "confirm_action",
+  //         message:
+  //           "Apakah anda yakin ingin menyimpan data hasil sorting ke file? (Aksi ini akan menimpa semua data sebelumnya)",
+  //       },
+  //     ]);
+  //     // -------------------------------------------------------------------------------------------------------------------
 
-    case "Kembali": {
-      return;
-    }
-  }
+  //     if (confirm_action) {
+  //       data = data_sort;
+  //       write_data();
+  //     } else {
+  //       console.log("Aksi dibatalkan. Data tidak disimpan.");
+  //     }
+  //   } else {
+  //     console.log("Data tidak disimpan.");
+  //   }
+  // }
+
+  // console.log("========= URUTKAN DATA BERDASARKAN ID ========");
+  // const { menu } = await inquirer.prompt([
+  //   {
+  //     type: "list",
+  //     name: "menu",
+  //     message: "Pilih arah pengurutan data : ",
+  //     choices: ["Ascending (A-Z)", "Descending (Z-A)", "Kembali"],
+  //   },
+  // ]);
+
+  // switch (menu) {
+  //   case "Ascending (A-Z)": {
+  //     console.log("\n");
+  //     const data_sort = [...data].sort((a, b) => a.ID.localeCompare(b.ID));
+  //     await hasil_sorting(data_sort);
+  //     console.log("\n");
+  //     break;
+  //   }
+
+  //   case "Descending (Z-A)": {
+  //     console.log("\n");
+  //     const data_sort = [...data].sort((a, b) => b.ID.localeCompare(a.ID));
+  //     await hasil_sorting(data_sort);
+  //     console.log("\n");
+  //     break;
+  //   }
+
+  //   case "Kembali": {
+  //     return;
+  //   }
+  // }
 }
 // ================================================================================================
 
@@ -340,382 +516,715 @@ async function sort_by_id() {
 async function edit_data() {
   console.log("========== EDIT DATA KARYAWAN ==========");
 
-  const { methode } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "methode",
-      message: "Pilih metode pencarian data yang akan diedit : ",
-      choices: ["Berdasarkan ID", "Berdasarkan Nama", "Batal"],
-    },
-  ]);
+  try {
+    const { search_by } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "search_by",
+        message: "Cari karyawan berdasarkan:",
+        choices: ["ID", "Nama"],
+      },
+    ]);
 
-  if (methode === "Batal") {
-    return;
-  }
+    let matches = [];
 
-  let find_data = null;
-
-  switch (methode) {
-    case "Berdasarkan ID": {
-      const { cari_id } = await inquirer.prompt([
-        { name: "cari_id", message: "Masukkan ID karyawan : " },
-      ]);
-
-      find_data = data.find(
-        (item) => item.ID.toLowerCase() === cari_id.trim().toLowerCase()
-      );
-      break;
-    }
-
-    case "Berdasarkan Nama": {
-      const { cari_nama } = await inquirer.prompt([
-        { name: "cari_nama", message: "Masukkan nama karyawan : " },
-      ]);
-
-      const hasil = data.filter((item) =>
-        item.NAMA.toLowerCase().includes(cari_nama.trim().toLowerCase())
-      );
-
-      if (hasil.length === 0) {
-        console.log("Data tidak ditemukan.");
-        return;
-      }
-
-      const { selected } = await inquirer.prompt([
+    if (search_by === "ID") {
+      const { id_query } = await inquirer.prompt([
         {
-          type: "list",
-          name: "selected",
-          message: "Pilih data yang ingin diedit : ",
-          choices: hasil.map((item) => `${item.ID} - ${item.NAMA}`),
+          type: "input",
+          name: "id_query",
+          message: "Masukkan ID karyawan :",
+          validate: (val) => {
+            if (!val.trim()) {
+              return "ID tidak boleh kosong!";
+            }
+            return true;
+          },
         },
       ]);
 
-      const id_terpilih = selected.split(" - ")[0];
-      find_data = data.find((item) => item.ID === id_terpilih);
-      break;
+      matches = data.filter(
+        (k) => k.ID.toLowerCase() === id_query.trim().toLowerCase()
+      );
+    } else {
+      const { name_query } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "name_query",
+          message: "Masukkan nama :",
+          validate: (val) => {
+            if (!val.trim()) {
+              return "Nama tidak boleh kosong!";
+            }
+            return true;
+          },
+        },
+      ]);
+
+      const key = name_query.trim().toLowerCase();
+      matches = data.filter((k) => k.NAMA.toLowerCase().includes(key));
     }
-  }
 
-  if (!find_data) {
-    console.log("Data tidak ditemukan.");
-    return;
-  }
+    if (matches.length === 0) {
+      console.log("Data tidak ditemukan.");
+      return;
+    }
 
-  console.log("========== DATA YANG AKAN DIEDIT ==========");
-  console.table([find_data]);
+    const { chosen } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "chosen",
+        message: "Pilih data yang ingin diedit:",
+        choices: matches.map((k) => ({
+          name: `${k.ID} | ${k.NAMA} | ${k.JABATAN} | ${k.TELP}`,
+          value: k.ID,
+        })),
+      },
+    ]);
 
-  const hasil_edit = await inquirer.prompt([
-    {
-      name: "ID",
-      message: `ID baru [ENTER jika tidak ingin mengubah] (${find_data.ID}) : `,
-    },
-    {
-      name: "NAMA",
-      message: `Nama baru [ENTER jika tidak ingin mengubah] (${find_data.NAMA}) : `,
-    },
-    {
-      name: "JABATAN",
-      message: `Jabatan baru [ENTER jika tidak ingin mengubah] (${find_data.JABATAN}) : `,
-    },
-    {
-      name: "TELP",
-      message: `No. Telp baru [ENTER jika tidak ingin mengubah] (${find_data.TELP}) : `,
-    },
-  ]);
+    const selected_index = data.findIndex((k) => k.ID === chosen);
 
-  // SIMPAN PERUBAHAN JIKA FIELD TIDAK KOSONG -----------------------
-  const new_ID = hasil_edit.ID.trim() || find_data.ID;
-  const new_NAMA = hasil_edit.NAMA.trim() || find_data.NAMA;
-  const new_JABATAN = hasil_edit.JABATAN.trim() || find_data.JABATAN;
-  const new_TELP = hasil_edit.TELP.trim() || find_data.TELP;
-  // ----------------------------------------------------------------
+    if (selected_index === -1) {
+      console.log("Data yang dipilih tidak ditemukan.");
+      return;
+    }
 
-  // VALIDASI ID DUPLIKAT JIKA ID DIGANTI ---------------------------------
-  if (new_ID !== find_data.ID && data.some((item) => item.ID === new_ID)) {
-    console.log(`ID "${new_ID}" sudah digunakan.`);
-    return;
-  }
-  // ----------------------------------------------------------------------
+    const current = data[selected_index];
+    console.log("Data saat ini :", current);
 
-  console.log("========== BERIKUT PERUBAHAN YANG AKAN DISIMPAN ==========");
-  console.table([
-    {
-      ID: new_ID,
-      NAMA: new_NAMA,
-      JABATAN: new_JABATAN,
-      TELP: new_TELP,
-    },
-  ]);
+    const { ID, NAMA, JABATAN, TELP } = await inquirer.prompt([
+      {
+        type: "input",
+        name: "ID",
+        message: `Masukkan ID baru (kosongkan untuk tetap "${current.ID}") :`,
+        validate: (val) => {
+          const t = val.trim();
+          if (!t) {
+            return true;
+          }
+          if (!/^[A-Za-z0-9]+$/.test(t)) {
+            return "ID hanya boleh huruf dan angka!";
+          }
+          const exists = data.some(
+            (k, idx) =>
+              idx !== selected_index && k.ID.toLowerCase() === t.toLowerCase()
+          );
+          if (exists) {
+            return "ID sudah digunakan!";
+          }
+          return true;
+        },
+      },
+      {
+        type: "input",
+        name: "NAMA",
+        message: `Masukkan nama baru (kosongkan untuk tetap "${current.NAMA}") :`,
+      },
+      {
+        type: "input",
+        name: "JABATAN",
+        message: `Masukkan jabatan baru (kosongkan untuk tetap "${current.JABATAN}") :`,
+      },
+      {
+        type: "input",
+        name: "TELP",
+        message: `Masukkan no telp baru (kosongkan untuk tetap "${current.TELP}") :`,
+        validate: (val) => {
+          const t = val.trim();
+          if (!t) {
+            return true;
+          }
+          if (!/^[0-9]+$/.test(t)) {
+            return "Nomor telepon hanya boleh angka!";
+          }
+          return true;
+        },
+      },
+    ]);
 
-  // KONFIRMASI SIMPAN ------------------------------------------------
-  const { save_confirm } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "save_confirm",
-      message: "Apakah anda yakin ingin menyimpan perubahan ke file?",
-    },
-  ]);
+    const { confirm } = await inquirer.prompt([
+      { type: "confirm", name: "confirm", message: "Simpan perubahan?" },
+    ]);
 
-  if (!save_confirm) {
-    console.log("Perubahan dibatalkan. Tidak ada data yang disimpan.");
-    return;
-  }
-  // ------------------------------------------------------------------
+    if (!confirm) {
+      console.log("Perubahan dibatalkan.");
+      return;
+    }
 
-  // SIMPAN PERUBAHAN KE ARRAY JIKA SETUJU ---
-  find_data.ID = new_ID;
-  find_data.NAMA = new_NAMA;
-  find_data.JABATAN = new_JABATAN;
-  find_data.TELP = new_TELP;
-  // -----------------------------------------
+    data[selected_index] = {
+      ID: ID && ID.trim() ? ID.trim().toUpperCase() : current.ID,
+      NAMA: NAMA && NAMA.trim() ? NAMA.trim() : current.NAMA,
+      JABATAN: JABATAN && JABATAN.trim() ? JABATAN.trim() : current.JABATAN,
+      TELP: TELP && TELP.trim() ? TELP.trim() : current.TELP,
+    };
 
-  const new_file_data =
-    data
-      .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
-      .join("\n") + "\n";
-
-  try {
-    fs.writeFileSync(file_path, new_file_data);
+    write_data();
     backup_data();
-    console.log("Data berhasil diperbarui dan disimpan ke file.");
+
+    console.log("Data karyawan berhasil diperbarui.");
   } catch (err) {
-    console.error("Gagal menyimpan file.", err.message);
+    console.error("Terjadi kesalahan saat mengedit data:", err.message);
   }
+
+  // console.log("========== EDIT DATA KARYAWAN ==========");
+
+  // const { methode } = await inquirer.prompt([
+  //   {
+  //     type: "list",
+  //     name: "methode",
+  //     message: "Pilih metode pencarian data yang akan diedit : ",
+  //     choices: ["Berdasarkan ID", "Berdasarkan Nama", "Batal"],
+  //   },
+  // ]);
+
+  // if (methode === "Batal") {
+  //   return;
+  // }
+
+  // let find_data = null;
+
+  // switch (methode) {
+  //   case "Berdasarkan ID": {
+  //     const { cari_id } = await inquirer.prompt([
+  //       { name: "cari_id", message: "Masukkan ID karyawan : " },
+  //     ]);
+
+  //     find_data = data.find(
+  //       (item) => item.ID.toLowerCase() === cari_id.trim().toLowerCase()
+  //     );
+  //     break;
+  //   }
+
+  //   case "Berdasarkan Nama": {
+  //     const { cari_nama } = await inquirer.prompt([
+  //       { name: "cari_nama", message: "Masukkan nama karyawan : " },
+  //     ]);
+
+  //     const hasil = data.filter((item) =>
+  //       item.NAMA.toLowerCase().includes(cari_nama.trim().toLowerCase())
+  //     );
+
+  //     if (hasil.length === 0) {
+  //       console.log("Data tidak ditemukan.");
+  //       return;
+  //     }
+
+  //     const { selected } = await inquirer.prompt([
+  //       {
+  //         type: "list",
+  //         name: "selected",
+  //         message: "Pilih data yang ingin diedit : ",
+  //         choices: hasil.map((item) => `${item.ID} - ${item.NAMA}`),
+  //       },
+  //     ]);
+
+  //     const id_terpilih = selected.split(" - ")[0];
+  //     find_data = data.find((item) => item.ID === id_terpilih);
+  //     break;
+  //   }
+  // }
+
+  // if (!find_data) {
+  //   console.log("Data tidak ditemukan.");
+  //   return;
+  // }
+
+  // console.log("========== DATA YANG AKAN DIEDIT ==========");
+  // console.table([find_data]);
+
+  // const hasil_edit = await inquirer.prompt([
+  //   {
+  //     name: "ID",
+  //     message: `ID baru [ENTER jika tidak ingin mengubah] (${find_data.ID}) : `,
+  //   },
+  //   {
+  //     name: "NAMA",
+  //     message: `Nama baru [ENTER jika tidak ingin mengubah] (${find_data.NAMA}) : `,
+  //   },
+  //   {
+  //     name: "JABATAN",
+  //     message: `Jabatan baru [ENTER jika tidak ingin mengubah] (${find_data.JABATAN}) : `,
+  //   },
+  //   {
+  //     name: "TELP",
+  //     message: `No. Telp baru [ENTER jika tidak ingin mengubah] (${find_data.TELP}) : `,
+  //   },
+  // ]);
+
+  // // SIMPAN PERUBAHAN JIKA FIELD TIDAK KOSONG -----------------------
+  // const new_ID = hasil_edit.ID.trim() || find_data.ID;
+  // const new_NAMA = hasil_edit.NAMA.trim() || find_data.NAMA;
+  // const new_JABATAN = hasil_edit.JABATAN.trim() || find_data.JABATAN;
+  // const new_TELP = hasil_edit.TELP.trim() || find_data.TELP;
+  // // ----------------------------------------------------------------
+
+  // // VALIDASI ID DUPLIKAT JIKA ID DIGANTI ---------------------------------
+  // if (new_ID !== find_data.ID && data.some((item) => item.ID === new_ID)) {
+  //   console.log(`ID "${new_ID}" sudah digunakan.`);
+  //   return;
+  // }
+  // // ----------------------------------------------------------------------
+
+  // console.log("========== BERIKUT PERUBAHAN YANG AKAN DISIMPAN ==========");
+  // console.table([
+  //   {
+  //     ID: new_ID,
+  //     NAMA: new_NAMA,
+  //     JABATAN: new_JABATAN,
+  //     TELP: new_TELP,
+  //   },
+  // ]);
+
+  // // KONFIRMASI SIMPAN ------------------------------------------------
+  // const { save_confirm } = await inquirer.prompt([
+  //   {
+  //     type: "confirm",
+  //     name: "save_confirm",
+  //     message: "Apakah anda yakin ingin menyimpan perubahan ke file?",
+  //   },
+  // ]);
+
+  // if (!save_confirm) {
+  //   console.log("Perubahan dibatalkan. Tidak ada data yang disimpan.");
+  //   return;
+  // }
+  // // ------------------------------------------------------------------
+
+  // // SIMPAN PERUBAHAN KE ARRAY JIKA SETUJU ---
+  // find_data.ID = new_ID;
+  // find_data.NAMA = new_NAMA;
+  // find_data.JABATAN = new_JABATAN;
+  // find_data.TELP = new_TELP;
+  // // -----------------------------------------
+
+  // write_data();
 }
 // ================================================================================================
 
 // HAPUS DATA KARYAWAN ============================================================================
 async function delete_data() {
-  console.log("========== HAPUS DATA KARYAWAN ==========");
+  console.log("========= HAPUS DATA KARYAWAN =========");
 
-  const { methode } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "methode",
-      message: "Pilih metode pencarian data yang akan dihapus : ",
-      choices: ["Berdasarkan ID", "Berdasarkan Nama", "Batal"],
-    },
-  ]);
+  try {
+    const { search_by } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "search_by",
+        message: "Cari data berdasarkan:",
+        choices: ["ID", "Nama"],
+      },
+    ]);
 
-  let target = null;
+    let results = [];
 
-  switch (methode) {
-    case "Berdasarkan ID": {
-      const { cari_id } = await inquirer.prompt([
-        { name: "cari_id", message: "Masukkan ID karyawan : " },
-      ]);
-
-      target = data.find(
-        (item) => item.ID.toLowerCase() === cari_id.trim().toLowerCase()
-      );
-      break;
-    }
-
-    case "Berdasarkan Nama": {
-      const { cari_nama } = await inquirer.prompt([
+    if (search_by === "ID") {
+      const { search_id } = await inquirer.prompt([
         {
-          name: "cari_nama",
-          message: "Masukkan nama (atau sebagian) karyawan : ",
+          type: "input",
+          name: "search_id",
+          message: "Masukkan ID karyawan:",
+          validate: (val) => (val.trim() ? true : "ID tidak boleh kosong!"),
         },
       ]);
 
-      const hasil = data.filter((item) =>
-        item.NAMA.toLowerCase().includes(cari_nama.trim().toLowerCase())
+      results = data.filter(
+        (karyawan) =>
+          karyawan.ID.toLowerCase() === search_id.trim().toLowerCase()
       );
-
-      if (hasil.length === 0) {
-        console.log("Data tidak ditemukan.");
-        return;
-      }
-
-      const { selected } = await inquirer.prompt([
+    } else {
+      const { search_name } = await inquirer.prompt([
         {
-          type: "list",
-          name: "selected",
-          message: "Pilih data yang ingin dihapus : ",
-          choices: hasil.map((item) => `${item.ID} - ${item.NAMA}`),
+          type: "input",
+          name: "search_name",
+          message: "Masukkan nama karyawan :",
+          validate: (val) => (val.trim() ? true : "Nama tidak boleh kosong!"),
         },
       ]);
 
-      const id_terpilih = selected.split(" - ")[0];
-      target = data.find((item) => item.ID === id_terpilih);
-      break;
+      results = data.filter((karyawan) =>
+        karyawan.NAMA.toLowerCase().includes(search_name.trim().toLowerCase())
+      );
     }
 
-    case "Batal": {
+    if (results.length === 0) {
+      console.log("Data karyawan tidak ditemukan.");
       return;
     }
-  }
 
-  if (!target) {
-    console.log("Data tidak ditemukan.");
-    return;
-  }
+    // Pilih data jika lebih dari satu hasil
+    let target;
+    if (results.length > 1) {
+      const { pilih } = await inquirer.prompt([
+        {
+          type: "list",
+          name: "pilih",
+          message: "Pilih data yang ingin dihapus:",
+          choices: results.map(
+            (k) => `${k.ID} | ${k.NAMA} | ${k.JABATAN} | ${k.TELP}`
+          ),
+        },
+      ]);
+      target = results.find(
+        (k) => `${k.ID} | ${k.NAMA} | ${k.JABATAN} | ${k.TELP}` === pilih
+      );
+    } else {
+      target = results[0];
+    }
 
-  console.log("========== DATA YANG AKAN DIHAPUS ==========");
-  console.table([target]);
+    console.table([target]);
 
-  // KONFIRMASI HAPUS -------------------------------------------
-  const { delete_confirm } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "delete_confirm",
-      message: "Apakah anda yakin ingin menghapus data ini?",
-    },
-  ]);
+    const { konfirmasi } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "konfirmasi",
+        message: "Apakah anda yakin ingin menghapus data ini?",
+      },
+    ]);
 
-  if (!delete_confirm) {
-    console.log("Penghapusan dibatalkan.");
-    return;
-  }
+    if (!konfirmasi) {
+      console.log("Penghapusan dibatalkan.");
+      return;
+    }
 
-  data = data.filter((item) => item.ID !== target.ID);
-  console.log(`Data dengan ID "${target.ID}" berhasil dihapus.`);
-  // ------------------------------------------------------------
+    // Hapus dari array data
+    data = data.filter((karyawan) => karyawan.ID !== target.ID);
 
-  // KONFIRMASI SIMPAN KE FILE SETELAH HAPUS DATA ----------------------------
-  const { save_delete } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "save_delete",
-      message: "Apakah ingin menyimpan hasil penghapusan ke file?",
-    },
-  ]);
+    // Simpan ke log (append)
+    const log_file = "logs/deleted-log.json";
+    let logs = [];
+    if (fs.existsSync(log_file)) {
+      try {
+        const log_content = fs.readFileSync(log_file, "utf-8");
+        logs = JSON.parse(log_content);
+      } catch (err) {
+        console.error("Gagal membaca log, membuat log baru.");
+      }
+    }
+    logs.push({
+      ...target,
+      deleted_at: new Date().toISOString(),
+    });
 
-  if (save_delete) {
-    const new_file_data =
-      data
-        .map((item) => `${item.ID}|${item.NAMA}|${item.JABATAN}|${item.TELP}`)
-        .join("\n") + "\n";
+    fs.writeFileSync(log_file, JSON.stringify(logs, null, 2));
+    console.log("Data telah ditambahkan ke log penghapusan.");
 
+    // Simpan perubahan utama & backup
+    write_data();
     backup_data();
 
-    try {
-      fs.appendFileSync(
-        log_path,
-        `${target.ID}|${target.NAMA}|${target.JABATAN}|${target.TELP}\n`
-      );
-      console.log("Data yang terhapus telah dicatat di `data-terhapus.txt`");
-    } catch (err) {
-      console.error("Gagal mencatat log penghapusan", err.message);
-    }
-
-    try {
-      fs.writeFileSync(file_path, new_file_data);
-      console.log("File berhasil diperbarui setelah penghapusan.");
-    } catch (err) {
-      console.error("Gagal menyimpan file.", err.message);
-    }
-  } else {
-    console.log("Data di file tidak diubah.");
+    console.log("Data karyawan berhasil dihapus.");
+  } catch (err) {
+    console.error("Terjadi kesalahan saat menghapus data:", err.message);
   }
+
+  // console.log("========== HAPUS DATA KARYAWAN ==========");
+
+  // const { methode } = await inquirer.prompt([
+  //   {
+  //     type: "list",
+  //     name: "methode",
+  //     message: "Pilih metode pencarian data yang akan dihapus : ",
+  //     choices: ["Berdasarkan ID", "Berdasarkan Nama", "Batal"],
+  //   },
+  // ]);
+
+  // let target = null;
+
+  // switch (methode) {
+  //   case "Berdasarkan ID": {
+  //     const { cari_id } = await inquirer.prompt([
+  //       { name: "cari_id", message: "Masukkan ID karyawan : " },
+  //     ]);
+
+  //     target = data.find(
+  //       (item) => item.ID.toLowerCase() === cari_id.trim().toLowerCase()
+  //     );
+  //     break;
+  //   }
+
+  //   case "Berdasarkan Nama": {
+  //     const { cari_nama } = await inquirer.prompt([
+  //       {
+  //         name: "cari_nama",
+  //         message: "Masukkan nama (atau sebagian) karyawan : ",
+  //       },
+  //     ]);
+
+  //     const hasil = data.filter((item) =>
+  //       item.NAMA.toLowerCase().includes(cari_nama.trim().toLowerCase())
+  //     );
+
+  //     if (hasil.length === 0) {
+  //       console.log("Data tidak ditemukan.");
+  //       return;
+  //     }
+
+  //     const { selected } = await inquirer.prompt([
+  //       {
+  //         type: "list",
+  //         name: "selected",
+  //         message: "Pilih data yang ingin dihapus : ",
+  //         choices: hasil.map((item) => `${item.ID} - ${item.NAMA}`),
+  //       },
+  //     ]);
+
+  //     const id_terpilih = selected.split(" - ")[0];
+  //     target = data.find((item) => item.ID === id_terpilih);
+  //     break;
+  //   }
+
+  //   case "Batal": {
+  //     return;
+  //   }
+  // }
+
+  // if (!target) {
+  //   console.log("Data tidak ditemukan.");
+  //   return;
+  // }
+
+  // console.log("========== DATA YANG AKAN DIHAPUS ==========");
+  // console.table([target]);
+
+  // // KONFIRMASI HAPUS -------------------------------------------
+  // const { delete_confirm } = await inquirer.prompt([
+  //   {
+  //     type: "confirm",
+  //     name: "delete_confirm",
+  //     message: "Apakah anda yakin ingin menghapus data ini?",
+  //   },
+  // ]);
+
+  // if (!delete_confirm) {
+  //   console.log("Penghapusan dibatalkan.");
+  //   return;
+  // }
+
+  // data = data.filter((item) => item.ID !== target.ID);
+  // console.log(`Data dengan ID "${target.ID}" berhasil dihapus.`);
+  // // ------------------------------------------------------------
+
+  // // KONFIRMASI SIMPAN KE FILE SETELAH HAPUS DATA ----------------------------
+  // const { save_delete } = await inquirer.prompt([
+  //   {
+  //     type: "confirm",
+  //     name: "save_delete",
+  //     message: "Apakah ingin menyimpan hasil penghapusan ke file?",
+  //   },
+  // ]);
+
+  // if (save_delete) {
+  //   try {
+  //     write_data();
+
+  //     let logs = [];
+  //     if (fs.existsSync(log_path)) {
+  //       const log_content = fs.readFileSync(log_path, "utf-8");
+  //       logs = log_content ? JSON.parse(log_content) : [];
+  //     }
+  //     logs.push(target);
+  //     fs.writeFileSync(log_path, JSON.stringify(logs, null, 2));
+
+  //     console.log("File telah diperbarui setelah penghapusan.");
+  //     console.log(
+  //       "Data yang terhapus telah dicatat di logs/data-terhapus.json"
+  //     );
+  //   } catch (err) {
+  //     console.error("Gagal menyimpan file.", err.message);
+  //   }
+  // } else {
+  //   console.log("Data di file tidak diubah.");
+  // }
   // -------------------------------------------------------------------------
 }
 // ================================================================================================
 
 // MENAMPILKAN STATISTIK KARYAWAN =================================================================
 function show_statistic() {
+  if (!fs.existsSync(file_path)) {
+    console.log("File data tidak ditemukan!");
+    return;
+  }
+
+  let data;
+  try {
+    const content = fs.readFileSync(file_path, "utf-8").trim();
+    data = content ? JSON.parse(content) : [];
+  } catch (err) {
+    console.error("Gagal membaca atau parsing file JSON:", err.message);
+    return;
+  }
+
+  if (data.length === 0) {
+    console.log("Data masih kosong!");
+    return;
+  }
+
   console.log("========== STATISTIK DATA KARYAWAN ==========");
+  console.log("Total Data Karyawan:", data.length);
 
-  const total = data.length;
-
-  // STATISTIK PER JABATAN --------------------------------
-  const per_jabatan = {};
-  data.forEach((item) => {
-    const jabatan = item.JABATAN;
-    per_jabatan[jabatan] = (per_jabatan[jabatan] || 0) + 1;
-  });
-  // ------------------------------------------------------
-
-  // STATISTIK PER AWALAN ID --------------------------------
-  const per_awalan_id = {};
-  data.forEach((item) => {
-    const awalan = item.ID[0].toUpperCase();
-    per_awalan_id[awalan] = (per_awalan_id[awalan] || 0) + 1;
-  });
+  // STATISTIK PER JABATAN ----------------------------------
+  const per_jabatan = data.reduce((acc, k) => {
+    const jabatan = k.JABATAN.trim().toUpperCase();
+    acc[jabatan] = (acc[jabatan] || 0) + 1;
+    return acc;
+  }, {});
+  console.table(
+    Object.entries(per_jabatan).map(([jabatan, jumlah]) => ({
+      Jabatan: jabatan,
+      Jumlah: jumlah,
+    }))
+  );
   // --------------------------------------------------------
 
-  console.log(`\nTotal Karyawan : ${total}`);
+  // STATISTIK PER ID -------------------------------------
+  const per_prefix = data.reduce((acc, k) => {
+    const prefix = k.ID.trim().charAt(0).toUpperCase();
+    acc[prefix] = (acc[prefix] || 0) + 1;
+    return acc;
+  }, {});
+  console.table(
+    Object.entries(per_prefix).map(([prefix, jumlah]) => ({
+      PrefixID: prefix,
+      Jumlah: jumlah,
+    }))
+  );
+  // ------------------------------------------------------
 
-  console.log("\nJumlah per Jabatan : ");
-  console.table(per_jabatan);
+  // const total = data.length;
 
-  console.log("\nJumlah berdasarkan awalan ID : ");
-  console.table(per_awalan_id);
+  // // STATISTIK PER JABATAN --------------------------------
+  // const per_jabatan = {};
+  // data.forEach((item) => {
+  //   const jabatan = item.JABATAN;
+  //   per_jabatan[jabatan] = (per_jabatan[jabatan] || 0) + 1;
+  // });
+  // // ------------------------------------------------------
+
+  // // STATISTIK PER AWALAN ID --------------------------------
+  // const per_awalan_id = {};
+  // data.forEach((item) => {
+  //   const awalan = item.ID[0].toUpperCase();
+  //   per_awalan_id[awalan] = (per_awalan_id[awalan] || 0) + 1;
+  // });
+  // // --------------------------------------------------------
+
+  // console.log(`\nTotal Karyawan : ${total}`);
+
+  // console.log("\nJumlah per Jabatan : ");
+  // console.table(per_jabatan);
+
+  // console.log("\nJumlah berdasarkan awalan ID : ");
+  // console.table(per_awalan_id);
 }
 // ================================================================================================
 
 // RESTORE DATA DARI BACKUP =======================================================================
 async function restore_data() {
-  console.log("========== RESTORE DATA DARI BACKUP ==========");
+  console.log("========= RESTORE DATA DARI BACKUP =========");
 
-  // CEK APAKAH BACKUP ADA ------------------------
-  if (!fs.existsSync(backup_path)) {
-    console.warn("File backup tidak ditemukan");
-    return;
-  }
-  // ----------------------------------------------
-
-  // KONFIRMASI PERTAMA -----------------------------------------------------------------------------
-  const { confirm_action } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "confirm_action",
-      message:
-        "[PERINGATAN] File backup akan menimpa file utama. Apakah Anda yakin ingin melanjutkan?",
-    },
-  ]);
-  // ------------------------------------------------------------------------------------------------
-
-  if (!confirm_action) {
-    console.log("Restore Data dibatalkan.");
-    return;
-  }
-
-  // KONFIRMASI KEDUA ---------------------------------------------------
-  const { double_confirm_action } = await inquirer.prompt([
-    {
-      type: "confirm",
-      name: "double_confirm_action",
-      message: "Apakah kamu yakin ingin mengembalikan data dari backup?",
-    },
-  ]);
-  // --------------------------------------------------------------------
-
-  if (!double_confirm_action) {
-    console.log("Restore Data dibatalkan.");
-    return;
-  }
-
-  // SETELAH KONFIRMASI -------------------------------------------------
   try {
-    fs.copyFileSync(backup_path, file_path);
-    console.log(
-      "Restore data berhasil.File Utama telah ditimpa dengan File Backup"
-    );
-    console.log(`${data.length} data berhasil dimuat dari backup.`);
-
-    // LOAD ULANG DATA KE MEMORY -------------------------------
-    const isi_file_restore = fs.readFileSync(file_path, "utf-8").trim();
-    const baris_restore = isi_file_restore ? isi_file_restore.split("\n") : [];
-
-    data = [];
-
-    for (let i = 0; i < baris_restore.length; i++) {
-      const kolom = baris_restore[i].split("|");
-      if (kolom.length >= 4) {
-        data.push({
-          ID: kolom[0],
-          NAMA: kolom[1],
-          JABATAN: kolom[2],
-          TELP: kolom[3],
-        });
-      }
+    if (!fs.existsSync(backup_path)) {
+      console.log("File backup tidak ditemukan.");
+      return;
     }
-    // ---------------------------------------------------------
+
+    // Baca data backup
+    let backup_data;
+    try {
+      const backup_content = fs.readFileSync(backup_path, "utf-8");
+      backup_data = JSON.parse(backup_content);
+    } catch (err) {
+      console.error("Gagal membaca atau mem-parsing file backup:", err.message);
+      return;
+    }
+
+    console.log(`Jumlah data di backup: ${backup_data.length}`);
+    console.table(backup_data.slice(0, 5));
+
+    const { restore_confirm } = await inquirer.prompt([
+      {
+        type: "confirm",
+        name: "restore_confirm",
+        message:
+          "Apakah anda yakin ingin merestore data dari backup? (Aksi ini akan menimpa semua data utama)",
+      },
+    ]);
+
+    if (!restore_confirm) {
+      console.log("Proses restore dibatalkan.");
+      return;
+    }
+
+    // Tulis ke file utama
+    try {
+      fs.writeFileSync(file_path, JSON.stringify(backup_data, null, 2));
+      data = backup_data; // update data di memori
+      console.log("Data berhasil direstore dari backup.");
+    } catch (err) {
+      console.error("Gagal menulis data ke file utama:", err.message);
+    }
   } catch (err) {
-    console.error("Gagal melakukan restore", err.message);
+    console.error("Terjadi kesalahan saat restore data:", err.message);
   }
+
+  // console.log("========== RESTORE DATA DARI BACKUP ==========");
+
+  // // CEK APAKAH BACKUP ADA ------------------------
+  // if (!fs.existsSync(backup_path)) {
+  //   console.warn("File backup tidak ditemukan");
+  //   return;
+  // }
+  // // ----------------------------------------------
+
+  // // KONFIRMASI PERTAMA -----------------------------------------------------------------------------
+  // const { confirm_action } = await inquirer.prompt([
+  //   {
+  //     type: "confirm",
+  //     name: "confirm_action",
+  //     message:
+  //       "[PERINGATAN] File backup akan menimpa file utama. Apakah Anda yakin ingin melanjutkan?",
+  //   },
+  // ]);
+  // // ------------------------------------------------------------------------------------------------
+
+  // if (!confirm_action) {
+  //   console.log("Restore Data dibatalkan.");
+  //   return;
+  // }
+
+  // // KONFIRMASI KEDUA ---------------------------------------------------
+  // const { double_confirm_action } = await inquirer.prompt([
+  //   {
+  //     type: "confirm",
+  //     name: "double_confirm_action",
+  //     message: "Apakah kamu yakin ingin mengembalikan data dari backup?",
+  //   },
+  // ]);
+  // // --------------------------------------------------------------------
+
+  // if (!double_confirm_action) {
+  //   console.log("Restore Data dibatalkan.");
+  //   return;
+  // }
+
+  // // SETELAH KONFIRMASI -------------------------------------------------
+  // try {
+  //   fs.copyFileSync(backup_path, file_path);
+  //   console.log(
+  //     "Restore data berhasil.File Utama telah ditimpa dengan File Backup"
+  //   );
+  //   console.log(`${data.length} data berhasil dimuat dari backup.`);
+
+  //   try {
+  //     data = JSON.parse(fs.readFileSync(file_path, "utf-8")) || [];
+  //     console.log(`${data.length} data berhasil dimuat dari backup`);
+  //   } catch (err) {
+  //     console.error("Gagal memuat data dari file backup", err.message);
+  //   }
+  // } catch (err) {
+  //   console.error("Gagal melakukan restore", err.message);
+  // }
   // --------------------------------------------------------------------
 }
 // ================================================================================================
