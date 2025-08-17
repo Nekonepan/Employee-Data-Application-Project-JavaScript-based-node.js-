@@ -1,6 +1,6 @@
 const inquirer = require("inquirer");
 const fs = require("fs");
-const { count } = require("console");
+// const { count } = require("console");
 // const prompt = require("prompt-sync")();
 // const { type } = require("os");
 // const { measureMemory } = require("vm");
@@ -59,9 +59,7 @@ function read_data() {
 function write_data() {
   try {
     fs.writeFileSync(file_path, JSON.stringify(data, null, 2));
-    if (!quiet) {
-      console.log("Data berhasil disimpan ke file.");
-    }
+    console.log("Data berhasil disimpan ke file.");
   } catch (err) {
     console.error(`Gagal untuk menyimpan file : ${err.message}`);
   }
@@ -436,7 +434,8 @@ async function edit_data() {
     }
 
     const current = data[selected_index];
-    console.log("Data saat ini :", current);
+    console.log("Data saat ini :");
+    console.table(current);
 
     // INPUT EDIT DATA BARU ------------------------------------------------------------
     const { ID, NAMA, JABATAN, TELP } = await inquirer.prompt([
