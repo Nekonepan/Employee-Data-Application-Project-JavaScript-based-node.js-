@@ -59,7 +59,9 @@ function read_data() {
 function write_data() {
   try {
     fs.writeFileSync(file_path, JSON.stringify(data, null, 2));
-    console.log("Data berhasil disimpan ke file.");
+    if (!quiet) {
+      console.log("Data berhasil disimpan ke file.");
+    }
   } catch (err) {
     console.error(`Gagal untuk menyimpan file : ${err.message}`);
   }
@@ -303,9 +305,13 @@ async function sort_by_id() {
     const data_sort = [...data];
 
     if (arah === "Ascending (A-Z)") {
-      data_sort.sort((a, b) => a.ID.localeCompare(b.ID));
+      data_sort.sort((a, b) =>
+        a.ID.toUpperCase().localeCompare(b.ID.toUpperCase())
+      );
     } else {
-      data_sort.sort((a, b) => b.ID.localeCompare(a.ID));
+      data_sort.sort((a, b) =>
+        b.ID.toUpperCase().localeCompare(a.ID.toUpperCase())
+      );
     }
 
     console.log("\n========== HASIL SORTING ==========");
@@ -614,6 +620,9 @@ async function delete_data() {
       try {
         const log_content = fs.readFileSync(log_path, "utf-8");
         logs = JSON.parse(log_content);
+        if (!Array.isArray(logs)) {
+          logs = [];
+        }
       } catch (err) {
         console.error("Gagal membaca log, membuat log baru.");
       }
@@ -704,6 +713,10 @@ async function restore_data() {
     try {
       const backup_content = fs.readFileSync(backup_path, "utf-8");
       backup_pay_load = JSON.parse(backup_content);
+      if (!Array.isArray(backup_pay_load)) {
+        console.error("Format backup tidak valid (harus array!).");
+        return;
+      }
     } catch (err) {
       console.error("Gagal membaca atau mem-parsing file backup:", err.message);
       return;
