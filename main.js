@@ -1,27 +1,42 @@
-const prompt = require("prompt-sync")();
 const inquirer = require("inquirer");
 const fs = require("fs");
-const { type } = require("os");
-const { measureMemory } = require("vm");
-const { captureRejectionSymbol } = require("events");
+const { count } = require("console");
+// const prompt = require("prompt-sync")();
+// const { type } = require("os");
+// const { measureMemory } = require("vm");
+// const { captureRejectionSymbol } = require("events");
 
-const file_path = "data-karyawan.json";
+const file_path = "data/data-karyawan.json";
 const backup_path = "backup/data-karyawan-backup.json";
 const log_path = "logs/data-terhapus.json";
 
 let data = read_data();
+
+if (!fs.existsSync("data")) {
+  fs.mkdirSync("data");
+}
 
 if (!fs.existsSync(file_path)) {
   console.warn(`File "${file_path}" tidak ditemukan. Membuat file baru...`);
   fs.writeFileSync(file_path, "[]");
 }
 
+if (!fs.existsSync("backup")) {
+  fs.mkdirSync("backup");
+}
+
+if (!fs.existsSync(backup_path)) {
+  console.warn(`File "${backup_path}" tidak ditemukan. Membuat file baru...`);
+  fs.writeFileSync(backup_path, "[]");
+}
+
 if (!fs.existsSync("logs")) {
   fs.mkdirSync("logs");
 }
 
-if (!fs.existsSync("backup")) {
-  fs.mkdirSync("backup");
+if (!fs.existsSync(log_path)) {
+  console.warn(`File "${log_path}" tidak ditemukan. Membuat file baru...`);
+  fs.writeFileSync(log_path, "[]");
 }
 
 // BACA DATA ======================================================================================
@@ -44,7 +59,6 @@ function read_data() {
 function write_data() {
   try {
     fs.writeFileSync(file_path, JSON.stringify(data, null, 2));
-    backup_data();
     console.log("Data berhasil disimpan ke file.");
   } catch (err) {
     console.error(`Gagal untuk menyimpan file : ${err.message}`);
@@ -85,20 +99,23 @@ async function tambah_data() {
   console.log("========== TAMBAH DATA BARU ==========");
 
   try {
-    const { count } = await inquirer.prompt([
+    const { count: count_raw } = await inquirer.prompt([
       {
-        type: "number",
+        type: "input",
         name: "count",
         message:
           "Masukkan jumlah data yang akan diinput. [MASUKKAN 0 UNTUK BATAL] : ",
         validate: (val) => {
-          if (isNaN(val) || val < 0) {
+          const n = parseInt(String(val).trim(), 10);
+          if (Number.isNaN(n) || n < 0) {
             return "Masukkan angka >= 0";
           }
           return true;
         },
       },
     ]);
+
+    const count = parseInt(String(count_raw).trim(), 10);
 
     // BATAL JIKA INPUT = 0 ----------------
     if (count === 0) {
@@ -628,7 +645,7 @@ function show_statistic() {
     return;
   }
 
-  let data;
+  let data = read_data();
   try {
     const content = fs.readFileSync(file_path, "utf-8").trim();
     data = content ? JSON.parse(content) : [];
@@ -683,23 +700,23 @@ async function restore_data() {
       return;
     }
 
-    let backup_data;
+    let backup_pay_load;
     try {
       const backup_content = fs.readFileSync(backup_path, "utf-8");
-      backup_data = JSON.parse(backup_content);
+      backup_pay_load = JSON.parse(backup_content);
     } catch (err) {
       console.error("Gagal membaca atau mem-parsing file backup:", err.message);
       return;
     }
 
-    if (backup_data.length === 0) {
+    if (!Array.isArray(backup_pay_load) || backup_pay_load.length === 0) {
       console.log("Data backup masih kosong!");
       return;
     }
 
     console.log("========== RESTORE DATA DARI BACKUP ==========");
-    console.log(`Jumlah data di backup: ${backup_data.length}`);
-    console.table(backup_data.slice(0, 5));
+    console.log(`Jumlah data di backup: ${backup_pay_load.length}`);
+    console.table(backup_pay_load);
 
     // KONFIRMASI RESTORE -------------------------------------------------------------------------------
     const { restore_confirm } = await inquirer.prompt([
@@ -718,9 +735,9 @@ async function restore_data() {
 
     // TULIS KE FILE UTAMA ---------------------------------------------
     try {
-      fs.writeFileSync(file_path, JSON.stringify(backup_data, null, 2));
+      fs.writeFileSync(file_path, JSON.stringify(backup_pay_load, null, 2));
 
-      data = backup_data;
+      data = backup_pay_load;
 
       console.log("Data berhasil direstore dari backup.");
     } catch (err) {
@@ -736,90 +753,90 @@ async function restore_data() {
 
 // MENU PILIHAN ===================================================================================
 async function main_menu() {
-  const { menu } = await inquirer.prompt([
-    {
-      type: "list",
-      name: "menu",
-      message: "Pilih Menu : ",
-      choices: [
-        "1. Tampilkan Semua Data",
-        "2. Tampilkan Statistik Data Karyawan",
-        "3. Tambah Data Baru",
-        "4. Urutkan Data",
-        "5. Cari Karyawan",
-        "6. Edit Data",
-        "7. Hapus Data",
-        "8. Restore Data dari Backup",
-        "9. Keluar",
-      ],
-    },
-  ]);
+  while (true) {
+    const { menu } = await inquirer.prompt([
+      {
+        type: "list",
+        name: "menu",
+        message: "Pilih Menu : ",
+        choices: [
+          "1. Tampilkan Semua Data",
+          "2. Tampilkan Statistik Data Karyawan",
+          "3. Tambah Data Baru",
+          "4. Urutkan Data",
+          "5. Cari Karyawan",
+          "6. Edit Data",
+          "7. Hapus Data",
+          "8. Restore Data dari Backup",
+          "9. Keluar",
+        ],
+      },
+    ]);
 
-  switch (menu) {
-    case "1. Tampilkan Semua Data": {
-      console.log("\n");
-      tampilkan_data();
-      console.log("\n");
-      break;
-    }
+    switch (menu) {
+      case "1. Tampilkan Semua Data": {
+        console.log("\n");
+        tampilkan_data();
+        console.log("\n");
+        break;
+      }
 
-    case "2. Tampilkan Statistik Data Karyawan": {
-      console.log("\n");
-      show_statistic();
-      console.log("\n");
-      break;
-    }
+      case "2. Tampilkan Statistik Data Karyawan": {
+        console.log("\n");
+        show_statistic();
+        console.log("\n");
+        break;
+      }
 
-    case "3. Tambah Data Baru": {
-      console.log("\n");
-      await tambah_data();
-      console.log("\n");
-      break;
-    }
+      case "3. Tambah Data Baru": {
+        console.log("\n");
+        await tambah_data();
+        console.log("\n");
+        break;
+      }
 
-    case "4. Urutkan Data": {
-      console.log("\n");
-      await sort_by_id();
-      console.log("\n");
-      break;
-    }
+      case "4. Urutkan Data": {
+        console.log("\n");
+        await sort_by_id();
+        console.log("\n");
+        break;
+      }
 
-    case "5. Cari Karyawan": {
-      console.log("\n");
-      await cari_data();
-      console.log("\n");
-      break;
-    }
+      case "5. Cari Karyawan": {
+        console.log("\n");
+        await cari_data();
+        console.log("\n");
+        break;
+      }
 
-    case "6. Edit Data": {
-      console.log("\n");
-      await edit_data();
-      console.log("\n");
-      break;
-    }
+      case "6. Edit Data": {
+        console.log("\n");
+        await edit_data();
+        console.log("\n");
+        break;
+      }
 
-    case "7. Hapus Data": {
-      console.log("\n");
-      await delete_data();
-      console.log("\n");
-      break;
-    }
+      case "7. Hapus Data": {
+        console.log("\n");
+        await delete_data();
+        console.log("\n");
+        break;
+      }
 
-    case "8. Restore Data dari Backup": {
-      console.log("\n");
-      await restore_data();
-      console.log("\n");
-      break;
-    }
+      case "8. Restore Data dari Backup": {
+        console.log("\n");
+        await restore_data();
+        console.log("\n");
+        break;
+      }
 
-    case "9. Keluar": {
-      console.log("\n");
-      console.log("Keluar dari program.");
-      process.exit();
+      case "9. Keluar": {
+        console.log("\n");
+        console.log("Keluar dari program.");
+        process.exit();
+      }
     }
   }
-
-  await main_menu();
 }
 // ================================================================================================
 

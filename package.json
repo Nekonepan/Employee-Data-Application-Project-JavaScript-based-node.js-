@@ -1,14 +1,14 @@
 {
-  "name": "project",
+  "name": "employee-data-application-project-javascript-based-nodejs",
   "version": "1.0.0",
-  "main": "data-karyawan.js",
+  "main": "main.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "author": "Lutfan Alaudin Naja, AKA 'Nekonepan'",
+  "license": "MIT",
+  "description": "A feature-rich CLI (Command Line Interface) application for managing employee data using **JavaScript (Node.js)**. This app is a **rewrite and improvement** of my previous project written in **C++**, with added enhancements like bulk input, interactive editing, real file persistence, and modular design.",
   "dependencies": {
     "inquirer": "^8.2.4",
     "prompt-sync": "^4.2.0"
