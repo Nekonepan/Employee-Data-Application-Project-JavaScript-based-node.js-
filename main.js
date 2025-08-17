@@ -85,72 +85,104 @@ async function tambah_data() {
   console.log("========== TAMBAH DATA BARU ==========");
 
   try {
-    const { ID, NAMA, JABATAN, TELP } = await inquirer.prompt([
+    const { count } = await inquirer.prompt([
       {
-        type: "input",
-        name: "ID",
-        message: "Masukkan ID karyawan:",
+        type: "number",
+        name: "count",
+        message:
+          "Masukkan jumlah data yang akan diinput. [MASUKKAN 0 UNTUK BATAL] : ",
         validate: (val) => {
-          if (!val.trim()) {
-            return "ID tidak boleh kosong!";
-          }
-          if (!/^[A-Za-z0-9]+$/.test(val)) {
-            return "ID hanya boleh huruf dan angka!";
-          }
-          if (
-            data.some(
-              (karyawan) => karyawan.ID.toUpperCase() === val.toUpperCase()
-            )
-          ) {
-            return "ID sudah digunakan!";
-          }
-          return true;
-        },
-      },
-      {
-        type: "input",
-        name: "NAMA",
-        message: "Masukkan nama karyawan:",
-        validate: (val) => {
-          if (!val.trim()) {
-            return "Nama tidak boleh kosong!";
-          }
-          return true;
-        },
-      },
-      {
-        type: "input",
-        name: "JABATAN",
-        message: "Masukkan jabatan karyawan:",
-        validate: (val) => {
-          if (!val.trim()) {
-            return "Jabatan tidak boleh kosong!";
-          }
-          return true;
-        },
-      },
-      {
-        type: "input",
-        name: "TELP",
-        message: "Masukkan no telp karyawan:",
-        validate: (val) => {
-          if (!val.trim()) {
-            return "Nomor telepon tidak boleh kosong!";
-          }
-          if (!/^[0-9]+$/.test(val)) {
-            return "Nomor telepon hanya boleh angka!";
+          if (isNaN(val) || val < 0) {
+            return "Masukkan angka >= 0";
           }
           return true;
         },
       },
     ]);
 
-    // KONFIRMASI SIMPAN --------------------------------------------------
+    // BATAL JIKA INPUT = 0 ----------------
+    if (count === 0) {
+      console.log("Input data dibatalkan.");
+      return;
+    }
+    // -------------------------------------
+
+    let new_data = [];
+
+    for (let i = 0; i < count; i++) {
+      console.log(`\nInput data karyawan ke-${i + 1}:`);
+
+      const { ID, NAMA, JABATAN, TELP } = await inquirer.prompt([
+        {
+          type: "input",
+          name: "ID",
+          message: "Masukkan ID karyawan :",
+          validate: (val) => {
+            if (!val.trim()) {
+              return "ID tidak boleh kosong!";
+            }
+            if (!/^[A-Za-z0-9]+$/.test(val)) {
+              return "ID hanya boleh huruf & angka!";
+            }
+            if (
+              data.some(
+                (karyawan) => karyawan.ID.toUpperCase() === val.toUpperCase()
+              ) ||
+              new_data.some(
+                (karyawan) => karyawan.ID.toUpperCase() === val.toUpperCase()
+              )
+            ) {
+              return "ID sudah digunakan!";
+            }
+            return true;
+          },
+        },
+        {
+          type: "input",
+          name: "NAMA",
+          message: "Masukkan nama karyawan :",
+          validate: (val) => {
+            return val.trim() ? true : "Nama tidak boleh kosong!";
+          },
+        },
+        {
+          type: "input",
+          name: "JABATAN",
+          message: "Masukkan jabatan karyawan :",
+          validate: (val) => {
+            return val.trim() ? true : "Jabatan tidak boleh kosong!";
+          },
+        },
+        {
+          type: "input",
+          name: "TELP",
+          message: "Masukkan no telp karyawan :",
+          validate: (val) => {
+            if (!val.trim()) {
+              return "Nomor telepon tidak boleh kosong!";
+            }
+            if (!/^[0-9]+$/.test(val)) {
+              return "Nomor telepon hanya boleh angka!";
+            }
+            return true;
+          },
+        },
+      ]);
+
+      new_data.push({
+        ID: ID.trim().toUpperCase(),
+        NAMA: NAMA.trim(),
+        JABATAN: JABATAN.trim(),
+        TELP: TELP.trim(),
+      });
+    }
+
+    // KONFIRMASI SIMPAN ---------------------------------------------------------
     const { save_confirm } = await inquirer.prompt([
       {
         type: "confirm",
         name: "save_confirm",
-        message: "Apakah anda yakin ingin menyimpan data ini?",
+        message: `\nApakah anda yakin ingin menyimpan ${new_data.length} data ini?`,
       },
     ]);
 
@@ -159,21 +191,15 @@ async function tambah_data() {
       return;
     }
 
-    data.push({
-      ID: ID.trim().toUpperCase(),
-      NAMA: NAMA.trim(),
-      JABATAN: JABATAN.trim(),
-      TELP: TELP.trim(),
-    });
-
+    data.push(...new_data);
     write_data();
     backup_data();
 
-    console.log("Data berhasil disimpan.");
+    console.log(`${new_data.length} data berhasil disimpan.`);
   } catch (err) {
     console.error("Terjadi kesalahan saat menambahkan data:", err.message);
   }
-  // ----------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
 }
 // ================================================================================================
 
@@ -641,7 +667,7 @@ function show_statistic() {
   }, {});
   console.table(
     Object.entries(per_prefix).map(([prefix, jumlah]) => ({
-      PrefixID: prefix,
+      Prefix_ID: prefix,
       Jumlah: jumlah,
     }))
   );

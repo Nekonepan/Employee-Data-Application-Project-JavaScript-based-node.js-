@@ -12,6 +12,12 @@
     "TELP": "081377788899"
   },
   {
+    "ID": "C013",
+    "NAMA": "Ahmad Farid",
+    "JABATAN": "Staff",
+    "TELP": "081536517752"
+  },
+  {
     "ID": "C087",
     "NAMA": "Rizky Pratama",
     "JABATAN": "Staff",
@@ -28,6 +34,12 @@
     "NAMA": "Bayu Nugroho",
     "JABATAN": "Manager",
     "TELP": "081355566677"
+  },
+  {
+    "ID": "F003",
+    "NAMA": "Nadiya Rahmawati",
+    "JABATAN": "HRD",
+    "TELP": "081120578313"
   },
   {
     "ID": "H021",
