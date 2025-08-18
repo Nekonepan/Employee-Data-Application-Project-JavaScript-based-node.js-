@@ -489,6 +489,19 @@ async function edit_data() {
     ]);
     // ---------------------------------------------------------------------------------
 
+    const updated = {
+      ID: ID && ID.trim() ? ID.trim().toUpperCase() : current.ID,
+      NAMA: NAMA && NAMA.trim() ? NAMA.trim() : current.NAMA,
+      JABATAN: JABATAN && JABATAN.trim() ? JABATAN.trim() : current.JABATAN,
+      TELP: TELP && TELP.trim() ? TELP.trim() : current.TELP,
+    };
+
+    console.log("Data sebelumnya : \n");
+    console.log(console.table(current));
+
+    console.log("Data setelah di edit : \n");
+    console.log(console.table([updated]));
+
     // KONFIRMASI SIMPAN ---------------------------------------------------
     const { confirm } = await inquirer.prompt([
       { type: "confirm", name: "confirm", message: "Simpan perubahan?" },
