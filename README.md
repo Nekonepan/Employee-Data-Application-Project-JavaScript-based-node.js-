@@ -74,10 +74,10 @@ node main.js
     |-- data-karyawan.json           # Primary employee data file
 |-- backup/
     |-- data-karyawan-backup.json    # Backup file
-├── logs/
+|-- logs/
     |-- deleted-logs.json            # Log of deleted employee data
-├── package.json                     # Metadata and dependencies
-└── node_modules/                    # Installed dependencies
+|-- package.json                     # Metadata and dependencies
+|-- node_modules/                    # Installed dependencies
 ```
 
 ---
@@ -132,9 +132,9 @@ The application runs in a loop until the user chooses to exit.
 
 ## 📝 Data Format
 
-Data is stored in the `data-karyawan.json` file with the format:
+### Data is stored in the `data-karyawan.json` file with the format:
 
-```json
+```
 [
   {
     "ID": "A123",
@@ -155,9 +155,9 @@ Data is stored in the `data-karyawan.json` file with the format:
 - Each object represents one employee record
 - This format makes it easier to read, write, backup, and restore data
 
-Deleted data is stored in `logs/data-terhapus.json` with the format:
+### Deleted data is stored in `logs/data-terhapus.json` with the format:
 
-```json
+```
 [
   {
     "ID": "H739",
