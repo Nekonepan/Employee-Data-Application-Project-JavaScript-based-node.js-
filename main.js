@@ -1,10 +1,5 @@
 const inquirer = require("inquirer");
 const fs = require("fs");
-// const { count } = require("console");
-// const prompt = require("prompt-sync")();
-// const { type } = require("os");
-// const { measureMemory } = require("vm");
-// const { captureRejectionSymbol } = require("events");
 
 const file_path = "data/data-karyawan.json";
 const backup_path = "backup/data-karyawan-backup.json";
